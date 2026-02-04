@@ -15,6 +15,7 @@ COL = {
     "Home Team": 6, "Away Team": 7, "Home Score": 8, "Away Score": 9,
     "Score Diff": 10, "Winner": 11, "Primetime": 12,
     "Spread": 13, "Over/Under": 14, "Spread Result": 15, "O/U Result": 16,
+    "Temperature": 17, "Wind": 18, "Conditions": 19,
 }
 
 
@@ -97,6 +98,30 @@ def read_excel(filepath):
             game["sr"] = spread_result
         if ou_result:
             game["our"] = ou_result
+
+        # Read weather columns (may not exist in older files)
+        temp = cells[COL["Temperature"] - 1] if len(cells) >= 17 else None
+        wind = cells[COL["Wind"] - 1] if len(cells) >= 18 else None
+        conditions = cells[COL["Conditions"] - 1] if len(cells) >= 19 else None
+
+        try:
+            temp = int(temp) if temp is not None else None
+        except (ValueError, TypeError):
+            temp = None
+
+        wind = str(wind or "").strip()
+        if wind == "None":
+            wind = ""
+        conditions = str(conditions or "").strip()
+        if conditions == "None":
+            conditions = ""
+
+        if temp is not None:
+            game["tp"] = temp
+        if wind:
+            game["wi"] = wind
+        if conditions:
+            game["cd"] = conditions
 
         games.append(game)
 

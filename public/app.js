@@ -421,7 +421,7 @@
     // Games table
     const tbody = document.getElementById("rf-games-body");
     if (r.total === 0) {
-      tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:#556;padding:1.5rem">No matching games</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;color:#556;padding:1.5rem">No matching games</td></tr>';
       return;
     }
 
@@ -458,11 +458,17 @@
         ourDisplay = g.our;
       }
 
+      // Weather data
+      const tempDisplay = g.tp != null ? g.tp + "°" : "";
+      const windDisplay = g.wi || "";
+      const condDisplay = g.cd || "";
+
       return `<tr>
         <td>${g.s}</td><td>${g.w}</td><td>${g.dt}</td><td>${g.d}</td>
         <td>${esc(opp)}</td><td>${isHome ? "Home" : "Away"}</td>
         <td>${myPts} – ${oppPts}</td><td class="${cls}">${res}</td><td>${ptBadge}</td>
         <td>${spreadDisplay}</td><td>${ouDisplay}</td><td>${atsDisplay}</td><td>${ourDisplay}</td>
+        <td>${tempDisplay}</td><td>${windDisplay}</td><td>${condDisplay}</td>
       </tr>`;
     }).join("");
   }
@@ -658,7 +664,7 @@
 
     const tbody = document.getElementById("ge-body");
     if (total === 0) {
-      tbody.innerHTML = '<tr><td colspan="15" style="text-align:center;color:#556;padding:1.5rem">No games match</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="18" style="text-align:center;color:#556;padding:1.5rem">No games match</td></tr>';
     } else {
       tbody.innerHTML = pageGames.map(g => {
         const diff = Math.abs(g.hs - g.as);
@@ -674,6 +680,11 @@
         const srDisplay = g.sr || "";
         const ourDisplay = g.our || "";
 
+        // Weather data
+        const tempDisplay = g.tp != null ? g.tp + "°" : "";
+        const windDisplay = g.wi || "";
+        const condDisplay = g.cd || "";
+
         return `<tr>
           <td>${g.s}</td><td>${g.w}</td><td>${g.dt}</td><td>${g.d}</td>
           <td class="${aCls}">${esc(g.a)}</td><td class="${aCls}">${g.as}</td>
@@ -682,6 +693,7 @@
           <td>${diff}</td><td>${ptBadge}</td>
           <td>${spreadDisplay}</td><td>${ouDisplay}</td>
           <td class="${srCls}">${srDisplay}</td><td>${ourDisplay}</td>
+          <td>${tempDisplay}</td><td>${windDisplay}</td><td>${condDisplay}</td>
         </tr>`;
       }).join("");
     }
