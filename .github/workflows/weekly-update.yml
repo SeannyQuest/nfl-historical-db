@@ -1,0 +1,85 @@
+name: Weekly NFL Data Update
+
+on:
+  schedule:
+    # Every Tuesday at 10:00 UTC (5 AM ET, after Monday Night Football)
+    - cron: '0 10 * * 2'
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Download historical Excel from release
+        run: gh release download v1.0 -p "nfl_scores_1966_2024.xlsx" -D .
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute current NFL season year
+        id: season
+        run: |
+          MONTH=$(date -u +%m)
+          YEAR=$(date -u +%Y)
+          if [ "$MONTH" -ge 3 ] && [ "$MONTH" -le 8 ]; then
+            # March-August: offseason, use previous year's season
+            SEASON=$((YEAR - 1))
+          else
+            # Sept-Feb: active season
+            if [ "$MONTH" -le 2 ]; then
+              SEASON=$((YEAR - 1))
+            else
+              SEASON=$YEAR
+            fi
+          fi
+          echo "year=$SEASON" >> "$GITHUB_OUTPUT"
+          echo "NFL Season: $SEASON"
+
+      - name: Scrape current season scores
+        run: |
+          cd scripts
+          python scrape_nfl_scores.py \
+            --start-year ${{ steps.season.outputs.year }} \
+            --end-year ${{ steps.season.outputs.year }} \
+            --output ../nfl_scores_current.xlsx
+
+      - name: Add betting spreads to both files
+        run: |
+          cd scripts
+          python add_spreads.py \
+            --files ../nfl_scores_1966_2024.xlsx ../nfl_scores_current.xlsx
+
+      - name: Generate data.js
+        run: |
+          cd scripts
+          python generate_data.py \
+            --files ../nfl_scores_1966_2024.xlsx ../nfl_scores_current.xlsx \
+            --output ../public/data.js
+
+      - name: Commit and push if data changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data.js
+          if git diff --staged --quiet; then
+            echo "No data changes detected, skipping commit"
+          else
+            git commit -m "Update NFL data $(date -u +%Y-%m-%d)"
+            git push
+            echo "Data updated and pushed!"
+          fi
