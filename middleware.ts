@@ -1,9 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-
 const PASSWORD = process.env.APP_PASSWORD || '';
 const AUTH_TOKEN = btoa(PASSWORD).replace(/=/g, '');
 
-function loginPage(error = false): NextResponse {
+function loginPage(error = false): Response {
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -106,14 +104,22 @@ function loginPage(error = false): NextResponse {
 </body>
 </html>`;
 
-  return new NextResponse(html, {
+  return new Response(html, {
     status: 200,
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
   });
 }
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+function getCookie(request: Request, name: string): string | null {
+  const cookie = request.headers.get('cookie');
+  if (!cookie) return null;
+  const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return match ? match[1] : null;
+}
+
+export default async function middleware(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const { pathname } = url;
 
   // Handle login form submission
   if (pathname === '/_auth' && request.method === 'POST') {
@@ -121,23 +127,23 @@ export async function middleware(request: NextRequest) {
     const password = formData.get('password') as string;
 
     if (password === PASSWORD) {
-      const response = NextResponse.redirect(new URL('/', request.url));
-      response.cookies.set('nfl-auth', AUTH_TOKEN, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 365, // 1 year
+      const redirectUrl = new URL('/', url);
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': redirectUrl.toString(),
+          'Set-Cookie': `nfl-auth=${AUTH_TOKEN}; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 365}; Path=/`,
+        },
       });
-      return response;
     }
 
     return loginPage(true);
   }
 
   // Check auth cookie
-  const authCookie = request.cookies.get('nfl-auth');
-  if (authCookie?.value === AUTH_TOKEN) {
-    return NextResponse.next();
+  const authCookie = getCookie(request, 'nfl-auth');
+  if (authCookie === AUTH_TOKEN) {
+    return fetch(request);
   }
 
   // Not authenticated — show login
