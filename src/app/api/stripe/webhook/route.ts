@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripeSigningSecret, getTierFromPrice } from "@/lib/stripe";
-import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaClient, SubscriptionTier } from "@/generated/prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.metadata?.userId;
-        const tier = session.metadata?.tier as string;
+        const tier = session.metadata?.tier as SubscriptionTier;
 
         if (userId && tier) {
           const customerId = session.customer as string;
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
           await prisma.user.update({
             where: { id: user.id },
             data: {
-              subscriptionTier: "FREE",
+              subscriptionTier: SubscriptionTier.FREE,
               stripeSubscriptionId: null,
               stripeSubscriptionStatus: "canceled",
             },
