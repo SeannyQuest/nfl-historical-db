@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripeSigningSecret, getTierFromPrice } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
-import { SubscriptionTier } from "@/generated/prisma/client";
+import { SubscriptionTier } from "@prisma/client";
 
 export async function POST(request: NextRequest) {
   const body = await request.text();

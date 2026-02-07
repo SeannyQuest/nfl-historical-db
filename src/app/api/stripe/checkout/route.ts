@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createCheckoutSession } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
-import { SubscriptionTier } from "@/generated/prisma/client";
+import { SubscriptionTier } from "@prisma/client";
 import { z } from "zod";
 
 const CheckoutSchema = z.object({
