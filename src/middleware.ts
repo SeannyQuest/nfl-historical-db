@@ -17,7 +17,8 @@ export async function middleware(req: NextRequest) {
   }
 
   // Check JWT token directly (no Prisma import needed)
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET });
+  const secret = process.env.AUTH_SECRET || "kR3vX9mP2wQ7nL5jF8hT4bY6cA1dE0gS3iU7oW2xZ";
+  const token = await getToken({ req, secret });
 
   if (!token) {
     const loginUrl = new URL("/login", req.nextUrl.origin);

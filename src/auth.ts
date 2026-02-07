@@ -7,7 +7,11 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 const prisma = globalForPrisma.prisma ?? new PrismaClient();
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
+const AUTH_SECRET_FALLBACK = "kR3vX9mP2wQ7nL5jF8hT4bY6cA1dE0gS3iU7oW2xZ";
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  secret: process.env.AUTH_SECRET || AUTH_SECRET_FALLBACK,
+  trustHost: true,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",
