@@ -931,3 +931,91 @@ Routes:
 - Text values like "3" can appear in multiple table cells (score column AND value column) causing `getByText` failures — use `getAllByText` with `toBeGreaterThanOrEqual(1)` for values that naturally repeat
 - The same active category text appears in both the button (selected state) and the panel header — another case for `getAllByText`
 - Playoff games should be excluded from team season win% records since they're bonus games that would inflate a team's total game count relative to regular-season-only teams
+
+---
+
+## Cycle 14 — Weekly Schedule & Scorebug Widget
+
+**Date:** 2026-02-07
+
+### Hypothesis
+Build a weekly schedule page at `/schedule` with scorebug-style game cards that show matchups, scores (for completed games), team records, spreads, and over/under lines. Support filtering by season and week. Group games by day within each week (Thursday → Sunday → Monday). This creates the foundation for future real-time odds and weather forecast integration directly addressing the user's stated need for a "scorebug of all upcoming games within that week's schedule that includes the spread."
+
+### Changes
+1. **Created `src/lib/schedule.ts`** — Pure schedule computation module:
+   - `ScheduleGame`, `ScorebugEntry`, `WeekGroup`, `ScheduleResult` interfaces
+   - `computeSchedule(games, filterSeason?, filterWeek?)` — computes:
+     - Week grouping with proper ordering (Weeks 1–18, then WildCard → Division → ConfChamp → SuperBowl)
+     - Game sorting within weeks by day order (Thu → Fri → Sat → Sun → Mon) then by kickoff time
+     - Team records computed from regular-season games for the season (excludes playoffs, skips unplayed 0-0 games)
+     - Status labels: "Final" for completed, "TIE" for ties, time with "ET" suffix for upcoming, "TBD" for no time set
+     - Available seasons (descending) and available weeks for the filtered season
+   - `weekLabel()` helper: converts week codes to readable labels ("1" → "Week 1", "WildCard" → "Wild Card", etc.)
+   - Day-within-week sorting ensures Thursday Night Football appears first, Monday Night Football last
+2. **Created `src/app/api/schedule/route.ts`** — `GET /api/schedule?season=&week=`:
+   - Optional `season` and `week` query params
+   - Validates season range (1920–2100)
+   - Fetches all games with team, winner, season, and bettingLine includes
+   - Maps to `ScheduleGame` interface and calls `computeSchedule()`
+   - Returns `{ data: ScheduleResult }`
+3. **Added `useSchedule(season, week)` to `src/hooks/use-games.ts`** — TanStack Query hook:
+   - Builds query params from season/week, 5-minute stale time
+4. **Created `src/components/schedule-dashboard.tsx`** — Full schedule dashboard view:
+   - **Scorebug card component**: compact game card with status bar (Final/time/TIE), primetime and playoff badges, away team row (abbreviation + record + score), home team row (abbreviation + record + score), betting footer (spread + O/U) — gold tint on winner's row, green status for upcoming games, team abbreviations clickable to profiles
+   - **Week sections**: header with week label + season, games grouped by day (Thursday, Sunday, Monday)
+   - **Day headers**: full day name with formatted date
+   - **Responsive grid**: 1 column mobile, 2 on sm, 3 on lg
+   - **Filter controls**: season dropdown, week dropdown (appears when season selected), clear button, game count
+   - Season change resets week selection
+   - Loading, error, null, and empty states
+5. **Created `src/app/schedule/page.tsx`** — Schedule page:
+   - "Schedule" title with description
+   - `useState` for season and week filters
+   - `useSchedule` hook data passed to `ScheduleDashboard` component
+6. **Updated `src/components/navbar.tsx`** — Added "Schedule" nav link alongside Games, Matchups, Trends, Standings, Records
+7. **Created `src/__tests__/schedule.test.ts`** — 26 tests covering:
+   - `weekLabel`: numeric weeks, playoff rounds, unknown values
+   - Empty games, season filtering (filter + available seasons preserved)
+   - Week filtering (filter + available weeks for season)
+   - Week grouping: game count per week, ascending week order, playoff after regular season, correct weekLabel
+   - Game sorting: day order (Thu before Sun before Mon), time order within same day
+   - Status labels: Final, TIE, upcoming with time, TBD
+   - Team records: computed from regular season, playoff exclusion, ties in format, unplayed games
+   - Betting data passthrough: spread and overUnder preserved, null handling
+   - Multi-season ordering (descending)
+8. **Created `src/__tests__/schedule-dashboard.test.tsx`** — 20 tests covering:
+   - Loading, error, null states
+   - Season dropdown, onSeasonChange callback, week dropdown visibility
+   - Clear button when season set
+   - Week headers, game count
+   - Team abbreviations, scores, team records, status labels (Final, upcoming time)
+   - Primetime badge, spread, O/U in betting footer
+   - Day grouping (Thursday, Sunday)
+   - Empty schedule "No games found" message
+9. **Created `src/__tests__/schedule-page.test.tsx`** — 2 tests: title, description text
+
+### Outcome
+- `npm run build` — **PASS** (21 routes including new `/api/schedule` and `/schedule`)
+- `npm test` — **PASS** (472/472 tests passing)
+- `npx eslint src/` — **PASS** (0 errors)
+
+### Verification
+```
+Test Files  25 passed (25)
+     Tests  472 passed (472)
+  Duration  3.02s
+```
+
+Routes:
+```
+├ ƒ /api/schedule    ← NEW
+├ ƒ /schedule        ← NEW
+```
+
+### Key Learnings
+- NFL weeks have a predictable day ordering (Thu → Fri → Sat → Sun → Mon) that differs from calendar order — a custom `DAY_ORDER` map ensures Thursday Night Football appears first and Monday Night Football last within each week
+- Team records on scorebugs must be computed from the full season's regular-season games (not just the filtered week) — otherwise the record would only reflect games in the current view
+- Unplayed games (both scores 0, no winner) must be distinguished from 0-0 ties — checking all three conditions prevents counting upcoming games as ties in team records
+- The scorebug card pattern (status bar → team rows → betting footer) naturally maps to a compact card layout where each section has a clear purpose — status at top, matchup in middle, betting context at bottom
+- Cascading filter resets (season change clears week) prevent stale filter combinations — selecting a new season should always start with "All Weeks" to avoid showing an empty week that doesn't exist in the new season
+- `computeSchedule` takes the full game array for record computation even when filtering — this ensures team records are accurate across the entire season regardless of which week is displayed

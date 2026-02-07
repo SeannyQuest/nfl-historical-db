@@ -46,6 +46,12 @@ export default async function Navbar() {
           >
             Records
           </Link>
+          <Link
+            href="/schedule"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Schedule
+          </Link>
         </div>
       </div>
       <div className="flex items-center gap-4">

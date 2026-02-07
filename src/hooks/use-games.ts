@@ -121,6 +121,23 @@ export function useRecords() {
   });
 }
 
+export function useSchedule(season: string | null, week: string | null) {
+  return useQuery({
+    queryKey: ["schedule", season, week],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (season) params.set("season", season);
+      if (week) params.set("week", week);
+      const qs = params.toString();
+      const url = `/api/schedule${qs ? `?${qs}` : ""}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch schedule");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useMatchup(team1: string, team2: string) {
   return useQuery({
     queryKey: ["matchup", team1, team2],
