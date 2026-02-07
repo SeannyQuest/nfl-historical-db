@@ -680,3 +680,81 @@ Routes:
 - The navbar is a server component (uses `auth()`) so navigation links use `next/link` `Link` instead of `useRouter` — `Link` works in both server and client components
 - Team abbreviations appearing in both the scoreboard header and the recent games table cause `getByText` failures in tests — `getAllByText` with `toBeGreaterThanOrEqual(1)` handles this pattern
 - The `computeMatchup` function naturally produces symmetric records: team1Record.wins === team2Record.losses, which simplifies the API response
+
+---
+
+## Cycle 11 — League-Wide Trends Dashboard
+
+**Date:** 2026-02-07
+
+### Hypothesis
+Build a league-wide trends dashboard at `/trends` that displays historical scoring, home-field advantage, and betting trends across all NFL seasons. Include overall stats, season-by-season breakdown, primetime slot analysis, and playoff vs regular season comparison. The pure trend computation should be fully testable without a database.
+
+### Changes
+1. **Created `src/lib/trends.ts`** — Pure league-wide trend computation module:
+   - `TrendGame` interface — minimal shape for trend computation (no DB dependency)
+   - `SeasonTrend`, `PrimetimeTrend`, `TrendsResult` interfaces
+   - `computeTrends(games)` — single-pass computation of:
+     - Overall stats: avg total points, home win percentage (excludes ties from denominator), over percentage, highest/lowest scoring games
+     - Season-by-season breakdown: game count, avg total, avg home/away score, home/away/tie record, home win pct, O/U splits, home cover rate
+     - Primetime trends by slot (SNF/MNF/TNF): game count, avg total, home win pct, over pct
+     - Playoff vs regular season comparison: avg total, home win pct for each
+   - Seasons sorted descending, primetime sorted by game count descending
+   - Empty game array returns zero-value defaults
+2. **Created `src/app/api/trends/route.ts`** — `GET /api/trends`:
+   - Fetches all games with season and bettingLine includes, ordered by date ascending
+   - Maps DB rows to `TrendGame` interface and calls `computeTrends()`
+   - Returns `{ data: TrendsResult }`
+3. **Added `useTrends()` to `src/hooks/use-games.ts`** — TanStack Query hook:
+   - Fetches `/api/trends` with 5-minute stale time
+4. **Created `src/components/trends-dashboard.tsx`** — Full trends dashboard view:
+   - **Overview stat boxes**: total games (with season count), avg total, home win %, over %, scoring range (low–high)
+   - **Playoff vs Regular panels**: side-by-side comparison of avg total and home win pct with color-coded percentages (green >0.500, red <0.500, gold =0.500)
+   - **Primetime breakdown table**: slot name (gold), game count, avg total, home win %, over % — hidden when empty
+   - **Season-by-season table**: year, games, avg total, home win %, over %, home cover %, home-away-tie record — responsive column hiding for mobile/tablet
+   - Loading, error, null states matching existing design patterns
+   - Reuses `InfoPanel` / `DataRow` / `StatBox` component patterns
+   - `pctColor` helper for consistent percentage color coding
+5. **Created `src/app/trends/page.tsx`** — Trends page:
+   - "League Trends" title with description
+   - `useTrends` hook data passed to `TrendsDashboard` component
+6. **Updated `src/components/navbar.tsx`** — Added "Trends" nav link alongside Games and Matchups
+7. **Created `src/__tests__/trends.test.ts`** — 20 tests covering:
+   - Empty games zero-value defaults
+   - Overall stats: avg total, home win pct (excludes ties), over pct (excludes null), highest/lowest scoring games, game/season counts
+   - Season breakdown: grouping, descending sort, per-season stats (avg, home/away splits), O/U stats, spread stats
+   - Primetime: grouping by slot, avg total, home win pct, over pct, non-primetime exclusion
+   - Playoff vs regular: split stats, regular/playoff home win pct, no playoff games edge case
+   - Full integration test with multi-season dataset
+8. **Created `src/__tests__/trends-dashboard.test.tsx`** — 24 tests covering:
+   - Loading, error, null states
+   - Overview stat boxes: total games, seasons, avg total, home win %, over %, scoring range
+   - Playoff vs regular: panel titles, avg total values, home win pct values
+   - Primetime table: header, slot names, game counts, avg totals
+   - Season table: header, years, game counts, avg totals, home-away-tie records
+   - Empty primetime/season sections hidden
+9. **Created `src/__tests__/trends-page.test.tsx`** — 2 tests: page title, description text
+
+### Outcome
+- `npm run build` — **PASS** (15 routes including new `/api/trends` and `/trends`)
+- `npm test` — **PASS** (339/339 tests passing)
+- `npx eslint src/` — **PASS** (0 errors)
+
+### Verification
+```
+Test Files  16 passed (16)
+     Tests  339 passed (339)
+  Duration  2.18s
+```
+
+Routes:
+```
+├ ƒ /api/trends    ← NEW
+├ ƒ /trends        ← NEW
+```
+
+### Key Learnings
+- Home win percentage should exclude ties from the denominator (decisions = homeWins + awayWins, not total games) — this gives a more accurate picture of home-field advantage
+- The single-pass computation pattern (one loop populating multiple maps/accumulators) is efficient for league-wide stats — iterating 14K+ games only once keeps API response time reasonable
+- The `pctColor` helper centralizes the threshold-based color logic (green/red/gold at 0.500) — reusable across season table, primetime table, and playoff comparison
+- Unused variables that only serve as accumulators in a loop (e.g., `ties` at the overall level) should be removed if they're only tracked in sub-aggregations (season-level) — ESLint catches this as a warning

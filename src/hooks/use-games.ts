@@ -84,6 +84,18 @@ export function useTeamStats(teamName: string) {
   });
 }
 
+export function useTrends() {
+  return useQuery({
+    queryKey: ["trends"],
+    queryFn: async () => {
+      const res = await fetch("/api/trends");
+      if (!res.ok) throw new Error("Failed to fetch trends");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useMatchup(team1: string, team2: string) {
   return useQuery({
     queryKey: ["matchup", team1, team2],

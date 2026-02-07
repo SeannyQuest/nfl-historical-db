@@ -28,6 +28,12 @@ export default async function Navbar() {
           >
             Matchups
           </Link>
+          <Link
+            href="/trends"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Trends
+          </Link>
         </div>
       </div>
       <div className="flex items-center gap-4">
