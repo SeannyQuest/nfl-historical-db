@@ -46,7 +46,7 @@ export default function CoachingPage() {
                           <td className="py-2 font-medium text-[#d4af37]">{team.team}</td>
                           <td className="py-2 text-center text-[#8899aa]">{team.previousSeason} ({team.previousWinPct})</td>
                           <td className="py-2 text-center text-[#8899aa]">{team.currentSeason} ({team.currentWinPct})</td>
-                          <td className="py-2 text-center text-[#e0e0e0]">{(parseFloat(team.improvement) * 100).toFixed(1)}%</td>
+                          <td className="py-2 text-center text-[#e0e0e0]">{(parseFloat(String(team.improvement)) * 100).toFixed(1)}%</td>
                         </tr>
                       ))}
                     </tbody>
@@ -75,8 +75,8 @@ export default function CoachingPage() {
                         <tr key={team.team} className="transition-colors hover:bg-[#1e2a45]/30">
                           <td className="py-2 font-medium text-[#d4af37]">{team.team}</td>
                           <td className="py-2 text-center text-[#8899aa]">{team.seasons}</td>
-                          <td className="py-2 text-center text-[#e0e0e0]">{(parseFloat(team.avgWinPct) * 100).toFixed(1)}%</td>
-                          <td className="py-2 text-center text-[#e0e0e0]">{(parseFloat(team.consistencyScore) * 100).toFixed(1)}%</td>
+                          <td className="py-2 text-center text-[#e0e0e0]">{(parseFloat(String(team.avgWinPct)) * 100).toFixed(1)}%</td>
+                          <td className="py-2 text-center text-[#e0e0e0]">{(parseFloat(String(team.consistencyScore)) * 100).toFixed(1)}%</td>
                         </tr>
                       ))}
                     </tbody>
