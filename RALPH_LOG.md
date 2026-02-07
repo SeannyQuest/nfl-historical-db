@@ -152,3 +152,69 @@ Test Files  3 passed (3)
 - Next.js 16 shows deprecation warning for `middleware` (wants `proxy`), but middleware still works and is required by NextAuth
 - Login page needs `Suspense` wrapper when using `useSearchParams()` in App Router
 - Mock both `next-auth/react` and `next/navigation` in Vitest for testing auth-dependent components
+
+---
+
+## Cycle 4 — Data Migration: Import 14,140 Games
+
+**Date:** 2026-02-06
+
+### Hypothesis
+Extract the raw game data from the legacy static `data.js` (recovered from git history) into a structured JSON file, then build a pure parsing/mapping library and a database migration script. The parsing library must be fully testable without a database connection by separating pure logic from Prisma calls.
+
+### Changes
+1. **Analyzed raw data.js** from git history — 14,140 games across 44 team names (32 current + 12 historical), with 83 ties, spread data from ~2004 onward (42%), weather data only from 2025 (2%)
+2. **Extracted `scripts/games-export.json`** (2.1 MB) — raw game array extracted from the legacy `data.js` variable assignment
+3. **Created `scripts/migrate-lib.ts`** — Pure parsing/mapping library with no database dependency:
+   - `RawGame`, `ParsedGame`, `ParsedBetting`, `ParsedWeather` interfaces
+   - `parseGame()` — maps raw abbreviations to typed fields, handles ties (null winner), noon-UTC dates, empty-string-to-null conversions
+   - `parseAllGames()` — batch parse
+   - `deduplicateGames()` — composite key: `date|homeTeam|awayTeam`
+   - `extractSeasons()` — unique sorted season years
+   - `generateReport()` — pre-migration summary with counts, percentages, unknown team detection
+   - `isKnownTeam()` / `getUnknownTeams()` — validates team names against `prisma/team-data.ts`
+   - Spread result mapping: `"Covered"→"COVERED"`, `"Lost"→"LOST"`, `"Push"→"PUSH"`
+   - O/U result mapping: `"Over"→"OVER"`, `"Under"→"UNDER"`, `"Push"→"PUSH"`
+   - Playoff detection via `PLAYOFF_WEEKS` set: WildCard, Division, ConfChamp, SuperBowl, Champ
+4. **Created `scripts/migrate-games.ts`** — Database execution script:
+   - Loads `games-export.json`, generates report, validates all team names
+   - Creates Season records, builds team→ID and season→ID maps
+   - Inserts games in batches of 100 using upsert (idempotent)
+   - Creates associated BettingLine and Weather records
+   - Post-migration verification with count comparison
+5. **Created `src/__tests__/migration.test.ts`** — 30 tests covering:
+   - Full game parsing with all fields
+   - Betting data mapping (spread, O/U, results)
+   - Weather data parsing
+   - Missing data → null handling
+   - Tie detection (winner null, scoreDiff 0)
+   - Away-team winner detection
+   - Playoff week detection (all 5 week types)
+   - Spread result mapping (all 3 + null)
+   - O/U result mapping (all 3 + null)
+   - Noon-UTC date storage
+   - Batch parsing and empty input
+   - Deduplication (same game, different dates, different teams)
+   - Season extraction (unique + sorted)
+   - Team name resolution (current, historical, unknown)
+   - Report generation (counts, ranges, percentages, per-season)
+6. **Updated `tsconfig.json`** — Excluded `scripts/migrate-games.ts` from build (uses dynamic Prisma import)
+
+### Outcome
+- `npm run build` — **PASS**
+- `npm test` — **PASS** (49/49 tests passing)
+- `npx eslint src/` — **PASS** (0 errors)
+
+### Verification
+```
+Test Files  4 passed (4)
+     Tests  49 passed (49)
+  Duration  695ms
+```
+
+### Key Learnings
+- Same separation pattern from Cycle 2 applies: pure parsing logic (`migrate-lib.ts`) separated from DB execution (`migrate-games.ts`) enables full testing without Prisma/database
+- Dates stored as noon UTC (`T12:00:00Z`) to prevent JavaScript's timezone offset from shifting game dates backward when converting to `Date` objects
+- Raw data uses single-char keys (`s`, `w`, `d`, `dt`, `h`, `a`, `hs`, `as`) for size optimization in the original static file — migration maps them to readable field names
+- Deduplication key is `date|homeTeam|awayTeam` — same composite unique constraint used in the Prisma schema
+- `scripts/migrate-games.ts` must be excluded from tsconfig.json for the same reason as `prisma/seed-teams.ts` — dynamic `import("../src/generated/prisma")` fails at build time
