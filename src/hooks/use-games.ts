@@ -35,6 +35,18 @@ export function useGames(params: UseGamesParams = {}) {
   });
 }
 
+export function useGame(id: string) {
+  return useQuery({
+    queryKey: ["game", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/games/${id}`);
+      if (!res.ok) throw new Error("Failed to fetch game");
+      return res.json();
+    },
+    enabled: !!id,
+  });
+}
+
 export function useTeams() {
   return useQuery({
     queryKey: ["teams"],

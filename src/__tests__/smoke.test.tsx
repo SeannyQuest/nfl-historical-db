@@ -17,6 +17,12 @@ vi.mock("@tanstack/react-query", async () => {
   };
 });
 
+// Mock next/navigation (used by GameTable's useRouter)
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 import Home from "@/app/page";
 
 afterEach(cleanup);

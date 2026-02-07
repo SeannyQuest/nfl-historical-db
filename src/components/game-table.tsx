@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 interface GameRow {
   id: string;
   date: string;
@@ -73,6 +75,8 @@ function ScoreCell({
 }
 
 export default function GameTable({ games, isLoading }: GameTableProps) {
+  const router = useRouter();
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -124,7 +128,11 @@ export default function GameTable({ games, isLoading }: GameTableProps) {
             const totalScore = game.homeScore + game.awayScore;
 
             return (
-              <tr key={game.id} className="game-row transition-colors">
+              <tr
+                key={game.id}
+                onClick={() => router.push(`/games/${game.id}`)}
+                className="game-row cursor-pointer transition-colors"
+              >
                 <td className="whitespace-nowrap px-4 py-3">
                   <div className="text-[#e0e0e0]">{formatDate(game.date)}</div>
                   <div className="text-xs text-[#5a6a7a]">

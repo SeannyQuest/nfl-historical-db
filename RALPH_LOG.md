@@ -425,3 +425,73 @@ Test Files  7 passed (7)
 - Responsive table columns with `hidden md:table-cell` / `hidden lg:table-cell` keep the mobile experience clean without horizontal scrolling on small screens
 - UTC timezone in `toLocaleDateString` prevents date display shifting when user timezone differs from server — matches the noon-UTC storage decision from Cycle 4
 - `useGames` hook rebuilds the query key from all filter params, causing TanStack Query to automatically refetch when any filter changes — no manual invalidation needed
+
+---
+
+## Cycle 8 — Game Detail Page: Scoreboard & Info Panels
+
+**Date:** 2026-02-06
+
+### Hypothesis
+Build a dedicated game detail page at `/games/[id]` that users navigate to by clicking rows in the dashboard table. Show a large scoreboard with team abbreviations, scores, and winner indicator, plus info panels for betting line details and weather/game conditions. This creates the navigation skeleton for future features: scorebug, live odds, and forecast widgets.
+
+### Changes
+1. **Updated `src/components/game-table.tsx`** — Made rows clickable:
+   - Added `useRouter` from `next/navigation`
+   - Each `<tr>` has `onClick={() => router.push(\`/games/${game.id}\`)}` with `cursor-pointer`
+2. **Added `useGame(id)` to `src/hooks/use-games.ts`** — Single-game TanStack Query hook:
+   - Fetches `/api/games/${id}` with `enabled: !!id` guard
+   - Query key `["game", id]` for per-game caching
+3. **Created `src/components/game-detail.tsx`** — Full game detail view:
+   - **Context bar**: season, week, date (long format), kickoff time, primetime badge, playoff badge
+   - **Scoreboard**: 3-column grid (away team / scores / home team), large abbreviations, city + nickname, WINNER badge on winning side, gold background tint for winner column, TIE badge for ties, point margin, total score
+   - **Betting panel** (InfoPanel): spread with team abbreviation prefix, over/under, ATS result (color-coded), O/U result (color-coded), total points, O/U margin with signed difference
+   - **Weather panel** (InfoPanel): temperature, wind, conditions, plus game info section (day, kickoff, season, week)
+   - **Empty states**: "No betting data available" / "No weather data available" when absent
+   - **Error state**: "Game not found" with "Back to Dashboard" button
+   - **Loading state**: centered loading message
+   - **Navigation**: "Back to Games" link at top
+   - Helper components: `InfoPanel`, `DataRow`, `resultColor` for consistent styling
+4. **Created `src/app/games/[id]/page.tsx`** — Client page component:
+   - Uses `use(params)` for Next.js 16 async params in client components
+   - Passes `useGame` hook data to `GameDetail` component
+5. **Updated `src/__tests__/dashboard.test.tsx`** — Added `vi.mock("next/navigation")` for GameTable's `useRouter`
+6. **Updated `src/__tests__/smoke.test.tsx`** — Added `vi.mock("next/navigation")` for Dashboard rendering
+7. **Created `src/__tests__/game-detail.test.tsx`** — 26 tests:
+   - Loading, error, and error back button states
+   - Team abbreviations, cities, nicknames in scoreboard
+   - Scores, WINNER badge, point margin, total score
+   - Primetime badge, formatted date, season year, week display, kickoff time
+   - Spread value with team prefix, O/U value, ATS result, O/U result
+   - Weather conditions and wind
+   - No-data messages for missing betting/weather
+   - TIE badge for tied games, Playoff badge
+   - Back to Games navigation link
+
+### Outcome
+- `npm run build` — **PASS** (9 routes including new `/games/[id]`)
+- `npm test` — **PASS** (188/188 tests passing)
+- `npx eslint src/` — **PASS** (0 errors)
+
+### Verification
+```
+Test Files  8 passed (8)
+     Tests  188 passed (188)
+  Duration  1.20s
+```
+
+Routes:
+```
+├ ƒ /games/[id]    ← NEW
+```
+
+### Key Learnings
+- Next.js 16 client components use `use(params)` from React to unwrap the `Promise<{ id: string }>` — the `await` pattern only works in server components
+- When `useRouter` is used in a child component (GameTable), all tests rendering that component need `vi.mock("next/navigation")` — the mock propagates through the component tree
+- The `InfoPanel` / `DataRow` pattern creates a consistent card layout with dividers — reusable for future panels (player stats, franchise history, etc.)
+- Color-coded betting results use the same palette as the dashboard table for consistency: green/red/gold for ATS, blue/orange/gold for O/U
+
+### Future Features Noted (from user)
+- **Weekly data updates**: automated ingestion of new game results after each NFL week
+- **Scorebug widget**: upcoming games within the current week's schedule, showing spread (real-time) and weather forecast (daily updates)
+- These will be addressed in future cycles with live data integration and a scorebug component on the dashboard

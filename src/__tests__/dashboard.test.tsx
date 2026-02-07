@@ -1,9 +1,14 @@
 import { render, screen, cleanup } from "@testing-library/react";
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import StatCard from "@/components/stat-card";
 import GameTable from "@/components/game-table";
 import Pagination from "@/components/pagination";
 import FilterBar from "@/components/filter-bar";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 afterEach(cleanup);
 
