@@ -34,6 +34,12 @@ export default async function Navbar() {
           >
             Trends
           </Link>
+          <Link
+            href="/standings"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Standings
+          </Link>
         </div>
       </div>
       <div className="flex items-center gap-4">

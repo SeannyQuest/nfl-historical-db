@@ -96,6 +96,19 @@ export function useTrends() {
   });
 }
 
+export function useStandings(season: string | null) {
+  return useQuery({
+    queryKey: ["standings", season],
+    queryFn: async () => {
+      const url = season ? `/api/standings?season=${season}` : "/api/standings";
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch standings");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useMatchup(team1: string, team2: string) {
   return useQuery({
     queryKey: ["matchup", team1, team2],

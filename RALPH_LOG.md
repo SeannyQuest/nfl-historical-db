@@ -758,3 +758,94 @@ Routes:
 - The single-pass computation pattern (one loop populating multiple maps/accumulators) is efficient for league-wide stats — iterating 14K+ games only once keeps API response time reasonable
 - The `pctColor` helper centralizes the threshold-based color logic (green/red/gold at 0.500) — reusable across season table, primetime table, and playoff comparison
 - Unused variables that only serve as accumulators in a loop (e.g., `ties` at the overall level) should be removed if they're only tracked in sub-aggregations (season-level) — ESLint catches this as a warning
+
+---
+
+## Cycle 12 — Division & Conference Standings
+
+**Date:** 2026-02-07
+
+### Hypothesis
+Build a division/conference standings page at `/standings` where users can view NFL teams ranked within their divisions by win percentage. Support filtering by season (or all-time) and display comprehensive records including home/away splits, division/conference records, point differentials, and current streaks. Teams should link to their profile pages for deeper analysis.
+
+### Changes
+1. **Created `src/lib/standings.ts`** — Pure standings computation module:
+   - `StandingsGame`, `TeamInfo`, `TeamStanding`, `DivisionStandings`, `StandingsResult` interfaces
+   - `computeStandings(games, teams, season?)` — computes:
+     - W-L-T record with win percentage for each team
+     - Points for/against and point differential
+     - Home/away split records
+     - Division record (games against same-division opponents)
+     - Conference record (games against same-conference opponents)
+     - Current streak (W/L/T + count, walking backward from most recent game)
+   - Excludes playoff games from standings (regular season only)
+   - Teams sorted by win pct (desc) then point differential (desc) as tiebreaker
+   - Divisions ordered: AFC EAST/NORTH/SOUTH/WEST, then NFC EAST/NORTH/SOUTH/WEST
+   - Pre-computes division and conference team sets for O(1) lookups during game processing
+2. **Created `src/app/api/standings/route.ts`** — `GET /api/standings?season=`:
+   - Optional `season` query param to filter by year (validates 1920–2100)
+   - Fetches active teams and all games (or season-filtered), maps to interfaces
+   - Returns `{ data: StandingsResult }` with grouped division standings
+3. **Added `useStandings(season)` to `src/hooks/use-games.ts`** — TanStack Query hook:
+   - Fetches `/api/standings` with optional season param
+   - 5-minute stale time
+4. **Created `src/components/standings-dashboard.tsx`** — Full standings dashboard view:
+   - **Conference sections**: AFC and NFC with bold headers
+   - **Division tables**: one per division with division label header
+   - **Team rows**: rank number, abbreviation (gold), nickname, W-L-T, PCT, PF, PA, point diff (green positive/red negative), home/away/div/conf records, streak (green W/red L)
+   - Responsive column hiding: PF/PA/DIFF on sm+, HOME/AWAY on md+, DIV/CONF/STRK on lg+
+   - Rows clickable to team profile pages
+   - Loading, error, null states
+5. **Created `src/app/standings/page.tsx`** — Standings page:
+   - "Standings" title with dynamic description (season or all-time)
+   - Season dropdown selector using `useSeasons` hook
+   - Clear button to return to all-time view
+   - Auto-fetches standings when season changes
+6. **Updated `src/components/navbar.tsx`** — Added "Standings" nav link alongside Games, Matchups, Trends
+7. **Created `src/__tests__/standings.test.ts`** — 23 tests covering:
+   - Empty games (zero records), null/provided season
+   - Basic records: home wins, away wins, ties, win percentage, point differential
+   - Home/away split records with ties
+   - Division record tracking (same-division games only)
+   - Conference record tracking (same-conference, excludes cross-conference)
+   - Playoff game exclusion from standings
+   - Sorting by win pct desc, point diff tiebreaker
+   - Division ordering (AFC before NFC, EAST/NORTH/SOUTH/WEST)
+   - Streak computation: winning, losing, no games
+   - Full integration test with mini season
+8. **Created `src/__tests__/standings-dashboard.test.tsx`** — 21 tests covering:
+   - Loading, error, null states
+   - Conference headers (AFC, NFC), division labels
+   - Team abbreviations, nicknames
+   - Win/loss counts, win percentage
+   - Points for/against, positive point diff with + prefix
+   - Home/away records, division/conference records
+   - Winning/losing streak display
+   - Rank numbers
+9. **Created `src/__tests__/standings-page.test.tsx`** — 4 tests: title, season selector, all-time option, description text
+
+### Outcome
+- `npm run build` — **PASS** (17 routes including new `/api/standings` and `/standings`)
+- `npm test` — **PASS** (387/387 tests passing)
+- `npx eslint src/` — **PASS** (0 errors)
+
+### Verification
+```
+Test Files  19 passed (19)
+     Tests  387 passed (387)
+  Duration  2.44s
+```
+
+Routes:
+```
+├ ƒ /api/standings    ← NEW
+├ ƒ /standings        ← NEW
+```
+
+### Key Learnings
+- Division/conference record computation requires pre-computing team sets per team (which teams share a division/conference) — avoids O(n²) lookups during game processing by using `Set.has()` for O(1) checks
+- Standings should only count regular season games — playoff games are excluded by filtering `isPlayoff: false` before processing
+- Win percentage for standings uses total games as denominator (W/total, including ties), unlike the trends module which excludes ties — this matches the standard NFL standings format where ties count as half a win
+- Point differential is the primary tiebreaker after win percentage in NFL standings — more meaningful than alphabetical or head-to-head for a general standings view
+- The `formatSplitRecord` helper omits ties when zero (e.g., "7-1" vs "6-1-1") — keeps the display clean for the majority of games that don't end in ties
+- Streak computation walks games backward (most recent first) — breaks on any result that differs from the initial result, naturally handling ties as streak-breakers
