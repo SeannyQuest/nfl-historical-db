@@ -83,3 +83,17 @@ export function useTeamStats(teamName: string) {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+export function useMatchup(team1: string, team2: string) {
+  return useQuery({
+    queryKey: ["matchup", team1, team2],
+    queryFn: async () => {
+      const params = new URLSearchParams({ team1, team2 });
+      const res = await fetch(`/api/matchups?${params}`);
+      if (!res.ok) throw new Error("Failed to fetch matchup");
+      return res.json();
+    },
+    enabled: !!team1 && !!team2 && team1 !== team2,
+    staleTime: 5 * 60 * 1000,
+  });
+}

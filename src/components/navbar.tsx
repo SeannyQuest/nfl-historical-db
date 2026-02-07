@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth, signOut } from "@/auth";
 
 export default async function Navbar() {
@@ -7,11 +8,27 @@ export default async function Navbar() {
 
   return (
     <nav className="flex items-center justify-between border-b border-[#1e2a45] bg-[#141b2d] px-6 py-3">
-      <div className="flex items-center gap-3">
-        <span className="text-lg font-bold text-white">GridIron Intel</span>
+      <div className="flex items-center gap-4">
+        <Link href="/" className="text-lg font-bold text-white transition-colors hover:text-[#d4af37]">
+          GridIron Intel
+        </Link>
         <span className="hidden text-sm text-[#8899aa] sm:inline">
           NFL Historical Database
         </span>
+        <div className="hidden items-center gap-3 border-l border-[#1e2a45] pl-4 sm:flex">
+          <Link
+            href="/"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Games
+          </Link>
+          <Link
+            href="/matchups"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Matchups
+          </Link>
+        </div>
       </div>
       <div className="flex items-center gap-4">
         <span className="text-sm text-[#8899aa]">{session.user.name}</span>

@@ -584,3 +584,99 @@ Routes:
 - `stopPropagation()` on nested clickable elements prevents the parent row's click handler from firing — allows team links inside clickable game rows
 - The same pure-logic separation pattern (Cycles 2, 4, 5, 6) continues to pay dividends: `computeTeamStats` is a pure function with 31 tests, fully independent of Prisma or API layer
 - URL encoding is needed for team names with spaces (e.g., "Kansas City Chiefs" → "Kansas%20City%20Chiefs") — both the hook and the API route handle encoding/decoding
+
+---
+
+## Cycle 10 — Head-to-Head Matchup Comparison
+
+**Date:** 2026-02-07
+
+### Hypothesis
+Build a head-to-head matchup comparison page at `/matchups` where users select two teams and see their full rivalry history: W-L-T record, scoring trends, betting trends (favorite/cover data, O/U splits), win streaks, and a recent games table. Add navigation links in the navbar for discoverability.
+
+### Changes
+1. **Created `src/lib/matchups.ts`** — Pure H2H matchup computation module:
+   - `MatchupGame` interface — minimal shape for matchup computation
+   - `MatchupRecord`, `MatchupScoringTrend`, `MatchupBettingTrend`, `MatchupGameSummary`, `MatchupResult` interfaces
+   - `computeMatchup(games, team1, team2)` — computes:
+     - Both teams' W-L-T records against each other
+     - Scoring trends: avg total, avg margin, highest/lowest total
+     - Betting trends: which team was favored more often + how often they covered, avg spread, O/U splits with over percentage
+     - Win streak: walks backwards from most recent game to find current streak (broken by tie or opponent win)
+     - Recent games: last 10 with full game details, most recent first
+   - Favorite detection: determines who was favored based on spread sign and home/away position, tracks cover rate per favorite
+   - Margin calculation: computed from team1's perspective across home and away games
+2. **Created `src/app/api/matchups/route.ts`** — `GET /api/matchups?team1=...&team2=...`:
+   - Validates both team names required and must be different
+   - Verifies both teams exist, returns 404 if not found
+   - Fetches all games between the two teams with related data
+   - Maps DB rows to `MatchupGame` interface and calls `computeMatchup()`
+   - Returns matchup result plus team info (abbreviation, city, nickname)
+3. **Added `useMatchup(team1, team2)` to `src/hooks/use-games.ts`** — TanStack Query hook:
+   - Fetches `/api/matchups` with query params
+   - `enabled` guard: both teams must be set and different
+   - 5-minute stale time
+4. **Created `src/components/matchup-comparison.tsx`** — Full H2H comparison view:
+   - **H2H scoreboard**: 3-column grid with team1 record / VS divider / team2 record, gold tint on leading team, total games count, current win streak
+   - **Scoring trends panel**: avg total, avg margin, highest/lowest totals
+   - **Betting trends panel**: favorite info, avg spread, O/U record, over percentage (blue/orange color coding)
+   - **Recent matchups table**: date, matchup, score, ATS result, O/U result — responsive column hiding
+   - Team abbreviations clickable to team profiles
+   - Loading, error, null states
+5. **Created `src/app/matchups/page.tsx`** — Matchups page with team selector:
+   - Two dropdown selectors with all active teams (alphabetical)
+   - Disables already-selected team in opposite dropdown
+   - VS divider between selectors
+   - Clear button when any team selected
+   - Same-team validation error message
+   - Prompt text when no selection made
+   - TanStack Query auto-fetches when both teams selected
+6. **Updated `src/components/navbar.tsx`** — Added navigation links:
+   - Made "GridIron Intel" title a link to home
+   - Added "Games" and "Matchups" nav links in a bordered section
+   - Links hidden on mobile, visible on `sm:` breakpoint
+   - Gold hover color on all nav links
+   - Imported `Link` from `next/link` for client-side navigation
+7. **Created `src/__tests__/matchups.test.ts`** — 24 tests covering:
+   - Empty games, team1/team2 home/away wins, ties, mixed results pct
+   - Scoring: avg total/margin, highest/lowest, away perspective
+   - Betting: home/away favorite detection, favorite cover tracking, avg spread, O/U counts, no spread data, null O/U skip
+   - Streak: single, multi-game, tie break, team2 streak
+   - Recent games: limit 10, fewer than 10, game details
+   - Full integration test with multi-season rivalry
+8. **Created `src/__tests__/matchup-comparison.test.tsx`** — 22 tests covering:
+   - Loading, error, null states
+   - Team abbreviations, cities, nicknames
+   - Total games count, team records (both sides)
+   - Win streak display
+   - Scoring trends (all 4 values)
+   - Betting: favorite info, avg spread, O/U record, over pct
+   - Recent game dates, scores, ATS/O/U results, playoff week labels
+   - Empty games message, no streak display
+9. **Created `src/__tests__/matchups-page.test.tsx`** — 5 tests covering:
+   - Page title, team selector dropdowns, team options, prompt text, description
+
+### Outcome
+- `npm run build` — **PASS** (13 routes including new `/api/matchups` and `/matchups`)
+- `npm test` — **PASS** (293/293 tests passing)
+- `npx eslint src/` — **PASS** (0 errors)
+
+### Verification
+```
+Test Files  13 passed (13)
+     Tests  293 passed (293)
+  Duration  1.53s
+```
+
+Routes:
+```
+├ ƒ /api/matchups    ← NEW
+├ ƒ /matchups        ← NEW
+```
+
+### Key Learnings
+- Favorite detection requires combining spread sign with home/away position: negative spread = home favored, positive = away favored. When team1 is away and spread is positive, team1 is the favorite
+- Win streak calculation must walk backwards from the most recent game — a tie breaks any streak, not just a loss
+- The navbar is a server component (uses `auth()`) so navigation links use `next/link` `Link` instead of `useRouter` — `Link` works in both server and client components
+- Team abbreviations appearing in both the scoreboard header and the recent games table cause `getByText` failures in tests — `getAllByText` with `toBeGreaterThanOrEqual(1)` handles this pattern
+- The `computeMatchup` function naturally produces symmetric records: team1Record.wins === team2Record.losses, which simplifies the API response
