@@ -218,3 +218,61 @@ Test Files  4 passed (4)
 - Raw data uses single-char keys (`s`, `w`, `d`, `dt`, `h`, `a`, `hs`, `as`) for size optimization in the original static file — migration maps them to readable field names
 - Deduplication key is `date|homeTeam|awayTeam` — same composite unique constraint used in the Prisma schema
 - `scripts/migrate-games.ts` must be excluded from tsconfig.json for the same reason as `prisma/seed-teams.ts` — dynamic `import("../src/generated/prisma")` fails at build time
+
+---
+
+## Cycle 5 — Zod Schemas & Validation Layer
+
+**Date:** 2026-02-06
+
+### Hypothesis
+Create Zod schemas mirroring every Prisma model for runtime validation. Build query parameter schemas for API routes with coercion, defaults, and constraints. These schemas serve as the contract between frontend and backend, ensuring type safety beyond TypeScript's compile-time checks.
+
+### Changes
+1. **Created `src/lib/schemas.ts`** — Complete validation library with:
+   - **Enum schemas:** `SubscriptionTierSchema`, `SeasonTypeSchema`, `SpreadResultSchema`, `OUResultSchema`, `ConferenceSchema`, `DivisionSchema` — mirror Prisma enums exactly
+   - **Model schemas:** `TeamSchema`, `SeasonSchema`, `GameSchema`, `BettingLineSchema`, `WeatherSchema` — full validation with CUID IDs, nullable fields, coerced dates
+   - **Create schemas:** `TeamCreateSchema`, `SeasonCreateSchema`, `GameCreateSchema`, `BettingLineCreateSchema`, `WeatherCreateSchema` — omit `id` for insert operations
+   - **Pagination:** `PaginationSchema` — page (min 1, default 1), limit (1–100, default 25), string coercion
+   - **Sorting:** `SortOrderSchema` (asc/desc, default desc), `GameSortFieldSchema` (date/homeScore/awayScore/scoreDiff/week, default date)
+   - **Game filters:** `GameFiltersSchema` — season, week, team, homeTeam, awayTeam, isPlayoff, primetime, minScore, maxScore, startDate, endDate, winner, hasBetting, hasWeather
+   - **Combined query:** `GameQuerySchema` — merges filters + pagination + sorting
+   - **Team filters:** `TeamFiltersSchema` — conference, division, isActive, franchiseKey
+   - **Season filters:** `SeasonFiltersSchema` — startYear, endYear range
+   - **Type exports** for all schemas via `z.infer<>`
+   - **`queryBoolean` helper** — custom transformer for string→boolean coercion that correctly handles `"false"` (unlike `z.coerce.boolean()`)
+2. **Created `src/__tests__/schemas.test.ts`** — 53 tests covering:
+   - All 6 enum schemas (valid values + rejection)
+   - TeamSchema (valid, empty name, long abbreviation, invalid conference, missing id)
+   - TeamCreateSchema (accepts without id)
+   - SeasonSchema (valid, year bounds 1920–2100)
+   - GameSchema (valid, tie with null winner, null optionals, negative scores, date coercion)
+   - GameCreateSchema (omits id)
+   - BettingLineSchema (valid, all nulls, source default)
+   - WeatherSchema (valid, all nulls)
+   - PaginationSchema (defaults, coercion, bounds)
+   - SortOrderSchema (default, valid, invalid)
+   - GameSortFieldSchema (default, all valid fields, invalid)
+   - GameFiltersSchema (empty, coercion for season/isPlayoff/dates/scores/booleans, team filter)
+   - GameQuerySchema (merged filters + pagination + sort, defaults)
+   - TeamFiltersSchema (empty, conference validation, division, isActive coercion)
+   - SeasonFiltersSchema (empty, year coercion, out-of-range rejection)
+
+### Outcome
+- `npm run build` — **PASS**
+- `npm test` — **PASS** (102/102 tests passing)
+- `npx eslint src/` — **PASS** (0 errors)
+
+### Verification
+```
+Test Files  5 passed (5)
+     Tests  102 passed (102)
+  Duration  692ms
+```
+
+### Key Learnings
+- `z.coerce.boolean()` uses JavaScript's `Boolean()` constructor, which means `Boolean("false")` returns `true` — any non-empty string is truthy. Query params from URLs are always strings, so a custom `queryBoolean` transformer that checks `val === "true"` is needed for correct string→boolean coercion
+- Zod's `.omit()` cleanly creates "Create" variants of model schemas without `id` — avoids duplicating the full schema definition
+- `z.coerce.date()` handles both `Date` objects and ISO date strings, making it ideal for the `GameSchema.date` field which receives strings from API params and `Date` objects from Prisma
+- Season year bounded to 1920–2100 matches the NFL's founding year and prevents far-future invalid data
+- Pagination limit capped at 100 prevents large unbounded queries that could overload the database
