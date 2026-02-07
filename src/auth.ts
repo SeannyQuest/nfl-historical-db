@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@/generated/prisma/client";
 import { verifyPassword, isAccountLocked, LOCKOUT_THRESHOLD, LOCKOUT_DURATION_MINUTES } from "@/lib/auth-utils";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };

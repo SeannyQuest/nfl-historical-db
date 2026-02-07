@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createCheckoutSession } from "@/lib/stripe";
-import { PrismaClient, SubscriptionTier } from "@prisma/client";
+import { PrismaClient, SubscriptionTier } from "@/generated/prisma/client";
 import { z } from "zod";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
