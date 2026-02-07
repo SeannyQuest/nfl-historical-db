@@ -345,3 +345,83 @@ Routes:
 - Next.js 16 route params are now `Promise`-based: `{ params }: { params: Promise<{ id: string }> }` with `await params` — breaking change from Next.js 15
 - The global Prisma singleton pattern (`globalThis as unknown as { prisma }`) prevents connection pool exhaustion during dev hot reload but creates a fresh client in production
 - Pure query-building functions that return Prisma-shaped objects are fully testable without mocking — same separation pattern as Cycles 2 and 4
+
+---
+
+## Cycle 7 — Dashboard UI: Game Table, Filters & Stats
+
+**Date:** 2026-02-06
+
+### Hypothesis
+Build the main dashboard that users see after login. Display games in a sortable, filterable table with betting data columns, pagination, stat cards for at-a-glance metrics, and a filter bar for season/week/team. The UI should be visually polished with the dark NFL theme and responsive across screen sizes.
+
+### Changes
+1. **Updated `src/app/globals.css`** — Established design system with CSS custom properties:
+   - Background: `--bg-primary` (#0a0f1a), `--bg-surface` (#141b2d), `--bg-input` (#0d1321)
+   - Borders: `--border` (#1e2a45), `--border-hover` (#2a3a55)
+   - Accent: `--accent` (#d4af37), `--accent-dim` (#b8941e)
+   - Text hierarchy: `--text-primary` (#f0f0f0), `--text-secondary` (#8899aa), `--text-muted` (#5a6a7a)
+   - Status colors: `--success` (#22c55e), `--danger` (#ef4444), `--info` (#3b82f6)
+   - Custom scrollbar styling for dark theme
+   - `.game-row:hover` with subtle gold tint, `.input-glow:focus` with gold box-shadow
+2. **Updated `src/lib/providers.tsx`** — Added `QueryClientProvider` wrapping `SessionProvider`:
+   - `QueryClient` created via `useState` to prevent recreation on re-render
+   - Default `staleTime: 60s`, `refetchOnWindowFocus: false`
+3. **Created `src/hooks/use-games.ts`** — TanStack Query hooks:
+   - `useGames(params)` — fetches `/api/games` with dynamic query params
+   - `useTeams()` — fetches active teams, 5-minute stale time
+   - `useSeasons()` — fetches all seasons, 5-minute stale time
+4. **Created `src/components/stat-card.tsx`** — Metric card with label, large value, and optional detail text
+5. **Created `src/components/filter-bar.tsx`** — Filter controls:
+   - Season dropdown (all seasons, most recent first)
+   - Week dropdown with readable labels (Week 1–18, Wild Card, Conf. Championship, Super Bowl)
+   - Team dropdown (all active teams, alphabetical)
+   - "Clear filters" button appears only when filters are active
+   - Gold focus glow on select elements
+6. **Created `src/components/game-table.tsx`** — Game data table:
+   - Columns: Date (with week/primetime badge), Matchup (abbreviation + full name), Score (with total), Spread, O/U, ATS Result, O/U Result
+   - Winner team names bold, losers muted
+   - Color-coded spread results: COVERED (green), LOST (red), PUSH (gold)
+   - Color-coded O/U results: OVER (blue), UNDER (orange), PUSH (gold)
+   - Responsive: betting columns hidden on mobile, ATS/O/U result columns hidden on tablet
+   - Loading state and empty state with centered messages
+   - Formatted dates (e.g., "Sep 8, 2024") with UTC timezone
+7. **Created `src/components/pagination.tsx`** — Page navigation:
+   - "Showing X–Y of Z games" counter with locale formatting
+   - Previous/Next buttons with disabled states
+   - Current page / total pages indicator
+   - Returns null when total is 0
+8. **Created `src/components/dashboard.tsx`** — Main dashboard orchestrator:
+   - Stat cards row: Total Games, Page info, Seasons, Teams
+   - Filter bar in a bordered panel
+   - Game table with automatic re-fetch on filter/page changes
+   - Pagination below table
+   - Filter changes reset to page 1
+   - `max-w-7xl` container with responsive padding
+9. **Updated `src/app/page.tsx`** — Replaced placeholder with `<Dashboard />`
+10. **Updated `src/__tests__/smoke.test.tsx`** — Mocks `useGames`/`useTeams`/`useSeasons` hooks and TanStack Query
+11. **Created `src/__tests__/dashboard.test.tsx`** — 27 tests:
+    - StatCard: renders label/value, optional detail, no detail omission
+    - GameTable: loading state, empty state, game rows, scores, total score, primetime badge, spread result, O/U result, formatted date, no betting data
+    - Pagination: page range text, current/total, buttons, disabled states, null on 0
+    - FilterBar: dropdowns with aria labels, team options, clear button visibility, week label formatting
+
+### Outcome
+- `npm run build` — **PASS**
+- `npm test` — **PASS** (162/162 tests passing)
+- `npx eslint src/` — **PASS** (0 errors)
+
+### Verification
+```
+Test Files  7 passed (7)
+     Tests  162 passed (162)
+  Duration  916ms
+```
+
+### Key Learnings
+- `QueryClient` must be created inside `useState(() => new QueryClient())` in App Router — creating it at module scope causes hydration mismatches since the client would be shared across requests on the server
+- TanStack Query hooks can be cleanly mocked in Vitest with `vi.mock("@/hooks/use-games")` — returns static data shapes without needing a `QueryClientProvider` in tests
+- CSS custom properties in globals.css provide a single source of truth for the design system — all components reference the same tokens, making theme changes trivial
+- Responsive table columns with `hidden md:table-cell` / `hidden lg:table-cell` keep the mobile experience clean without horizontal scrolling on small screens
+- UTC timezone in `toLocaleDateString` prevents date display shifting when user timezone differs from server — matches the noon-UTC storage decision from Cycle 4
+- `useGames` hook rebuilds the query key from all filter params, causing TanStack Query to automatically refetch when any filter changes — no manual invalidation needed
