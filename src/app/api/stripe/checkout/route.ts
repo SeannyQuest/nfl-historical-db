@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createCheckoutSession } from "@/lib/stripe";
-import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaClient, SubscriptionTier } from "@/generated/prisma/client";
 import { z } from "zod";
 
 const prisma = new PrismaClient();
 
 const CheckoutSchema = z.object({
-  tier: z.enum(["FREE", "PRO", "ADMIN"]),
+  tier: z.nativeEnum(SubscriptionTier),
 });
 
 export async function POST(request: NextRequest) {
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     const checkoutUrl = await createCheckoutSession(
       user.id,
-      tier as "FREE" | "PRO" | "ADMIN",
+      tier,
       user.stripeCustomerId || undefined
     );
 
