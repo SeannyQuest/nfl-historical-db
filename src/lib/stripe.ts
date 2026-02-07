@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { SubscriptionTier } from "@/generated/prisma/client";
+import { SubscriptionTier } from "@prisma/client";
 
 let stripe: Stripe | null = null;
 
