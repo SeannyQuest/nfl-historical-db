@@ -276,3 +276,72 @@ Test Files  5 passed (5)
 - `z.coerce.date()` handles both `Date` objects and ISO date strings, making it ideal for the `GameSchema.date` field which receives strings from API params and `Date` objects from Prisma
 - Season year bounded to 1920–2100 matches the NFL's founding year and prevents far-future invalid data
 - Pagination limit capped at 100 prevents large unbounded queries that could overload the database
+
+---
+
+## Cycle 6 — Games API: REST Routes & Query Building
+
+**Date:** 2026-02-06
+
+### Hypothesis
+Build the REST API layer for games, teams, and seasons. Separate pure query-building logic from route handlers for testability. Use Zod schemas from Cycle 5 for request validation and the Prisma singleton pattern for database access.
+
+### Changes
+1. **Created `src/lib/prisma.ts`** — Prisma client singleton using the global-for-dev pattern to prevent connection exhaustion during hot reload
+2. **Created `src/lib/queries.ts`** — Pure query-building functions (no DB dependency):
+   - `buildGameWhere(filters)` — translates validated `GameFilters` to Prisma `where` input: season year, week, isPlayoff, primetime, date range (gte/lte), team (OR home/away), homeTeam, awayTeam, winner, hasBetting/hasWeather (relation isNot/is null)
+   - `buildGameOrderBy(sort, order)` — maps sort field + order to Prisma `orderBy` object
+   - `buildPagination(page, limit)` — calculates `skip`/`take` from page/limit
+   - `buildTeamWhere(filters)` — conference, division, isActive, franchiseKey
+   - `buildSeasonWhere(filters)` — year range with gte/lte
+   - Full TypeScript interfaces for all where/orderBy inputs
+3. **Created `src/app/api/games/route.ts`** — `GET /api/games`:
+   - Validates query params with `GameQuerySchema.safeParse()`
+   - Returns 400 with flattened Zod errors on invalid params
+   - Parallel `findMany` + `count` for data + pagination metadata
+   - Includes related homeTeam, awayTeam, winner, season, bettingLine, weather
+   - Response shape: `{ data: [...], pagination: { page, limit, total, totalPages } }`
+4. **Created `src/app/api/games/[id]/route.ts`** — `GET /api/games/:id`:
+   - Finds by unique ID with full includes
+   - Returns 404 for missing games
+   - Next.js 16 async params pattern: `{ params }: { params: Promise<{ id: string }> }`
+5. **Created `src/app/api/teams/route.ts`** — `GET /api/teams`:
+   - Filters by conference, division, isActive, franchiseKey
+   - Sorted alphabetically by name
+6. **Created `src/app/api/seasons/route.ts`** — `GET /api/seasons`:
+   - Filters by startYear/endYear range
+   - Sorted by year descending (most recent first)
+7. **Created `src/__tests__/queries.test.ts`** — 34 tests covering:
+   - `buildGameWhere`: empty, season, week, isPlayoff, primetime, date range (both/start/end), team OR, homeTeam, awayTeam, winner, hasBetting true/false, hasWeather true/false, combined filters
+   - `buildGameOrderBy`: default, custom sort/order
+   - `buildPagination`: default, page 2, page 3 with custom limit, page 1 skip=0
+   - `buildTeamWhere`: empty, conference, division, isActive, franchiseKey, combined
+   - `buildSeasonWhere`: empty, startYear, endYear, range
+8. **Updated `package.json`** — Added `prisma generate` to build script and `postinstall` hook for Netlify/CI
+
+### Outcome
+- `npm run build` — **PASS** (all 8 routes compiled, including 4 new API routes)
+- `npm test` — **PASS** (136/136 tests passing)
+- `npx eslint src/` — **PASS** (0 errors)
+
+### Verification
+```
+Test Files  6 passed (6)
+     Tests  136 passed (136)
+  Duration  814ms
+```
+
+Routes:
+```
+├ ƒ /api/games
+├ ƒ /api/games/[id]
+├ ƒ /api/seasons
+├ ƒ /api/teams
+```
+
+### Key Learnings
+- Prisma 6 generates `client.ts` as the entry point (not `index.ts`), so imports must use `@/generated/prisma/client` — bare directory imports fail with Turbopack's module resolver
+- `prisma generate` only needs the schema file, not a running database — safe to run at build time and in `postinstall` for CI/Netlify
+- Next.js 16 route params are now `Promise`-based: `{ params }: { params: Promise<{ id: string }> }` with `await params` — breaking change from Next.js 15
+- The global Prisma singleton pattern (`globalThis as unknown as { prisma }`) prevents connection pool exhaustion during dev hot reload but creates a fresh client in production
+- Pure query-building functions that return Prisma-shaped objects are fully testable without mocking — same separation pattern as Cycles 2 and 4
