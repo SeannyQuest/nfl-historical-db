@@ -849,3 +849,85 @@ Routes:
 - Point differential is the primary tiebreaker after win percentage in NFL standings — more meaningful than alphabetical or head-to-head for a general standings view
 - The `formatSplitRecord` helper omits ties when zero (e.g., "7-1" vs "6-1-1") — keeps the display clean for the majority of games that don't end in ties
 - Streak computation walks games backward (most recent first) — breaks on any result that differs from the initial result, naturally handling ties as streak-breakers
+
+---
+
+## Cycle 13 — Record Book / Superlatives
+
+**Date:** 2026-02-07
+
+### Hypothesis
+Build a record book page at `/records` that surfaces the most extreme and notable games and team seasons from the entire 14,140-game dataset. Include highest/lowest scoring games, biggest blowouts, closest games, highest home/away scores, and best/worst team season records. Users should be able to browse categories and click through to game detail or team profile pages.
+
+### Changes
+1. **Created `src/lib/records.ts`** — Pure record book computation module:
+   - `RecordGame`, `RecordEntry`, `TeamSeasonEntry`, `RecordsResult` interfaces
+   - `computeRecords(games, limit?)` — computes 8 superlative categories:
+     - Highest scoring games (total points descending)
+     - Lowest scoring games (total points ascending)
+     - Biggest blowouts (margin descending)
+     - Closest games (margin ascending, ties labeled "TIE")
+     - Highest home scores
+     - Highest away scores
+     - Best team seasons (win% descending, min 10 games, regular season only)
+     - Worst team seasons (win% ascending, min 10 games, regular season only)
+   - Each entry includes rank, value, label, and full game/team data for click-through
+   - Team season records exclude playoff games and require minimum 10 games to filter out partial seasons
+   - Configurable limit (default 10) for number of entries per category
+2. **Created `src/app/api/records/route.ts`** — `GET /api/records`:
+   - Fetches all games with full includes (teams, winner, season, bettingLine)
+   - Maps to `RecordGame` interface and calls `computeRecords(games, 15)`
+   - Returns `{ data: RecordsResult }`
+3. **Added `useRecords()` to `src/hooks/use-games.ts`** — TanStack Query hook:
+   - Fetches `/api/records` with 5-minute stale time
+4. **Created `src/components/records-dashboard.tsx`** — Full records dashboard view:
+   - **Category selector**: 8 buttons in a flex-wrap layout, active category highlighted with gold background
+   - **Game record table**: rank (gold), matchup (away @ home with winner bold), score, value (gold), season, date — playoff badge on playoff games
+   - **Team season table**: rank, team abbreviation + name, season, record, win% — clickable to team profiles
+   - Rows clickable to game detail or team profile pages
+   - Responsive column hiding: season on sm+, date on md+
+   - Loading, error, null, and empty states
+5. **Created `src/app/records/page.tsx`** — Record Book page:
+   - "Record Book" title with description
+   - `useRecords` hook data passed to `RecordsDashboard` component
+6. **Updated `src/components/navbar.tsx`** — Added "Records" nav link
+7. **Created `src/__tests__/records.test.ts`** — 20 tests covering:
+   - Empty games, highest/lowest scoring ranking, labels
+   - Biggest blowouts ranking and labels
+   - Closest games ranking with TIE label
+   - Highest home/away score ranking and labels
+   - Best/worst team seasons with win%, playoff exclusion, 10-game minimum, ties in detail
+   - Custom limit, fewer than limit, mixed dataset integration
+8. **Created `src/__tests__/records-dashboard.test.tsx`** — 15 tests covering:
+   - Loading, error, null states
+   - Category button rendering
+   - Default category display (highest scoring)
+   - Game matchup, scores, season, rank rendering
+   - Category switching: blowouts, closest games, best seasons, worst seasons, lowest scoring
+   - Empty category "No records found" message
+9. **Created `src/__tests__/records-page.test.tsx`** — 2 tests: title, description text
+
+### Outcome
+- `npm run build` — **PASS** (19 routes including new `/api/records` and `/records`)
+- `npm test` — **PASS** (424/424 tests passing)
+- `npx eslint src/` — **PASS** (0 errors)
+
+### Verification
+```
+Test Files  22 passed (22)
+     Tests  424 passed (424)
+  Duration  2.72s
+```
+
+Routes:
+```
+├ ƒ /api/records    ← NEW
+├ ƒ /records        ← NEW
+```
+
+### Key Learnings
+- Team season records need a minimum game threshold (10 games) to filter out partial seasons from early NFL history or mid-season franchise relocations — without this, a team going 1-0 in a partial season would top "best seasons"
+- The `sortAndRank` helper pattern (sort first, slice, then assign ranks) cleanly produces ranked lists without maintaining rank state during sort — simpler than tracking indices
+- Text values like "3" can appear in multiple table cells (score column AND value column) causing `getByText` failures — use `getAllByText` with `toBeGreaterThanOrEqual(1)` for values that naturally repeat
+- The same active category text appears in both the button (selected state) and the panel header — another case for `getAllByText`
+- Playoff games should be excluded from team season win% records since they're bonus games that would inflate a team's total game count relative to regular-season-only teams

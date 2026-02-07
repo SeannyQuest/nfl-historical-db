@@ -109,6 +109,18 @@ export function useStandings(season: string | null) {
   });
 }
 
+export function useRecords() {
+  return useQuery({
+    queryKey: ["records"],
+    queryFn: async () => {
+      const res = await fetch("/api/records");
+      if (!res.ok) throw new Error("Failed to fetch records");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useMatchup(team1: string, team2: string) {
   return useQuery({
     queryKey: ["matchup", team1, team2],
