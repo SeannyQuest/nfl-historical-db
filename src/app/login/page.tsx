@@ -47,7 +47,7 @@ function LoginForm() {
           <p className="mt-4 text-sm text-red-400">{error}</p>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-6 text-left">
+        <form onSubmit={handleSubmit} method="POST" className="mt-6 text-left">
           <label
             htmlFor="username"
             className="block text-xs uppercase tracking-wide text-[#8899aa]"
@@ -87,6 +87,16 @@ function LoginForm() {
             {loading ? "Signing in..." : "Access Database"}
           </button>
         </form>
+
+        <p className="mt-4 text-center text-sm text-[#8899aa]">
+          Don&apos;t have an account?{" "}
+          <a
+            href="/signup"
+            className="font-semibold text-[#d4af37] hover:underline"
+          >
+            Sign Up
+          </a>
+        </p>
       </div>
     </div>
   );
