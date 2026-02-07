@@ -52,6 +52,12 @@ export default async function Navbar() {
           >
             Schedule
           </Link>
+          <Link
+            href="/playoffs"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Playoffs
+          </Link>
         </div>
       </div>
       <div className="flex items-center gap-4">

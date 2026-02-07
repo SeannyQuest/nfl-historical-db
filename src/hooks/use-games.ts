@@ -138,6 +138,18 @@ export function useSchedule(season: string | null, week: string | null) {
   });
 }
 
+export function usePlayoffStats() {
+  return useQuery({
+    queryKey: ["playoffStats"],
+    queryFn: async () => {
+      const res = await fetch("/api/playoff-stats");
+      if (!res.ok) throw new Error("Failed to fetch playoff stats");
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useMatchup(team1: string, team2: string) {
   return useQuery({
     queryKey: ["matchup", team1, team2],

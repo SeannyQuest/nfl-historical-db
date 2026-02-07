@@ -1019,3 +1019,83 @@ Routes:
 - The scorebug card pattern (status bar → team rows → betting footer) naturally maps to a compact card layout where each section has a clear purpose — status at top, matchup in middle, betting context at bottom
 - Cascading filter resets (season change clears week) prevent stale filter combinations — selecting a new season should always start with "All Weeks" to avoid showing an empty week that doesn't exist in the new season
 - `computeSchedule` takes the full game array for record computation even when filtering — this ensures team records are accurate across the entire season regardless of which week is displayed
+
+---
+
+## Cycle 15 — Playoff History & Postseason Analytics
+
+**Date:** 2026-02-07
+
+### Hypothesis
+Build a playoff history page at `/playoffs` that provides comprehensive postseason analytics: team playoff records ranked by Super Bowl wins, round-by-round breakdowns (Wild Card, Divisional, Conference Championship, Super Bowl), full Super Bowl history with champions and scores, and per-season playoff summaries. This leverages the existing `isPlayoff` flag and playoff week labels already stored in every game to create a uniquely engaging analytics page for NFL fans.
+
+### Changes
+1. **Created `src/lib/playoff-stats.ts`** — Pure playoff stats computation module:
+   - `PlayoffGame`, `TeamPlayoffRecord`, `SuperBowlEntry`, `PlayoffSeasonSummary`, `PlayoffStatsResult` interfaces
+   - `computePlayoffStats(games)` — single-pass computation of:
+     - Team playoff records: total W-L, win%, round-specific records (WC/Div/CC/SB), SB appearances, SB win seasons, playoff season count, last playoff season
+     - Super Bowl history: champion/runner-up with scores, sorted by season descending
+     - Season summaries: games, avg total, high/low totals, home/away wins, SB winner
+     - Overall totals: total games, total seasons, avg total, home win%, highest scoring game
+   - Teams sorted by SB wins desc, then total wins desc, then win% desc
+   - Filters to playoff games only (WildCard/Division/ConfChamp/SuperBowl)
+   - `roundLabel()` helper for human-readable round names
+2. **Created `src/app/api/playoff-stats/route.ts`** — `GET /api/playoff-stats`:
+   - Fetches only playoff games (`where: { isPlayoff: true }`) with team/winner/season includes
+   - Maps to `PlayoffGame` interface and calls `computePlayoffStats()`
+   - Returns `{ data: PlayoffStatsResult }`
+3. **Added `usePlayoffStats()` to `src/hooks/use-games.ts`** — TanStack Query hook:
+   - Fetches `/api/playoff-stats` with 5-minute stale time
+4. **Created `src/components/playoff-dashboard.tsx`** — Full playoff analytics view:
+   - **Overview stat boxes**: playoff game count (with season count), avg total points, home win %, Super Bowl count (with latest winner)
+   - **Tab navigation**: Team Records | Super Bowl History | By Season — underline-style active tab with gold accent
+   - **Team Records tab** (default): ranked table with team abbreviation (gold), W-L, win%, SB record (gold for winners, W-L format), Conf/Div/WC round records, playoff season count — responsive column hiding, rows clickable to team profiles
+   - **Super Bowl History tab**: season, champion (gold bold), score (winner bold), runner-up — rows clickable to game detail
+   - **By Season tab**: season, game count, avg total, high/low totals, home-away record, champion abbreviation — responsive column hiding
+   - Loading, error, null states matching design system
+5. **Created `src/app/playoffs/page.tsx`** — Playoffs page:
+   - "Playoff History" title with description
+   - `usePlayoffStats` hook data passed to `PlayoffDashboard` component
+6. **Updated `src/components/navbar.tsx`** — Added "Playoffs" nav link alongside Games, Matchups, Trends, Standings, Records, Schedule
+7. **Created `src/__tests__/playoff-stats.test.ts`** — 23 tests covering:
+   - `roundLabel`: all four playoff rounds, unknown value passthrough
+   - Empty games, non-playoff game filtering
+   - Team records: W-L counting, round-specific records (WC/Div/CC/SB), SB losses, playoff season count, SB win seasons, sorting by SB wins then total wins
+   - Super Bowl history: winner/loser with scores, away team winning, season descending sort
+   - Season summaries: per-season stats, SB winner tracking, home/away wins, descending sort, null SB winner
+   - Overall totals: total games, home win %, highest scoring game, unique season count
+   - Full integration test with a complete playoff bracket (4 rounds)
+8. **Created `src/__tests__/playoff-dashboard.test.tsx`** — 22 tests covering:
+   - Loading, error, null states
+   - Overview stat boxes: game count, seasons, avg total, home win %, SB count with latest winner
+   - All three tabs render and switch correctly
+   - Team Records: abbreviations, W-L records, win%, SB wins display, SB losses display
+   - Super Bowl History: champion, runner-up, score, seasons
+   - By Season: game counts, avg totals, champion abbreviation
+9. **Created `src/__tests__/playoff-page.test.tsx`** — 2 tests: title, description text
+
+### Outcome
+- `npm run build` — **PASS** (23 routes including new `/api/playoff-stats` and `/playoffs`)
+- `npm test` — **PASS** (519/519 tests passing)
+- `npx eslint src/` — **PASS** (0 errors)
+
+### Verification
+```
+Test Files  28 passed (28)
+     Tests  519 passed (519)
+  Duration  3.93s
+```
+
+Routes:
+```
+├ ƒ /api/playoff-stats    ← NEW
+├ ƒ /playoffs             ← NEW
+```
+
+### Key Learnings
+- Playoff games already have structured round labels (`WildCard`, `Division`, `ConfChamp`, `SuperBowl`) — no need to infer round from date or week number, just filter by these known values
+- Super Bowl entries need winner/loser perspective normalization — the home team isn't always the winner, so the entry must check `winnerName` against both team names to correctly assign winner/loser scores
+- Team ranking by Super Bowl wins creates a more meaningful default sort than total wins — a team with 1 SB win and 10 total wins should rank above a team with 0 SB wins and 20 total wins for a playoff-focused page
+- The tab navigation pattern (underline-style with gold border-bottom) provides a cleaner UX than the button-selector pattern used in Records — tabs work better when sections are mutually exclusive views of the same data domain
+- Filtering games at the API level (`where: { isPlayoff: true }`) is more efficient than fetching all 14K+ games and filtering in the computation — playoff games are ~5% of total, so this reduces data transfer significantly
+- `PlayoffSeasonSummary` naturally captures the "postseason story" for each year — games played, scoring trends, home advantage, and champion — making it useful for historical analysis and era comparison
