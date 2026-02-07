@@ -144,11 +144,23 @@ export default function GameTable({ games, isLoading }: GameTableProps) {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <span className={awayWon ? "font-semibold text-[#f0f0f0]" : "text-[#8899aa]"}>
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/teams/${encodeURIComponent(game.awayTeam.name)}`);
+                      }}
+                      className={`cursor-pointer transition-colors hover:text-[#d4af37] ${awayWon ? "font-semibold text-[#f0f0f0]" : "text-[#8899aa]"}`}
+                    >
                       {game.awayTeam.abbreviation}
                     </span>
                     <span className="text-[#5a6a7a]">@</span>
-                    <span className={homeWon ? "font-semibold text-[#f0f0f0]" : "text-[#8899aa]"}>
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/teams/${encodeURIComponent(game.homeTeam.name)}`);
+                      }}
+                      className={`cursor-pointer transition-colors hover:text-[#d4af37] ${homeWon ? "font-semibold text-[#f0f0f0]" : "text-[#8899aa]"}`}
+                    >
                       {game.homeTeam.abbreviation}
                     </span>
                   </div>

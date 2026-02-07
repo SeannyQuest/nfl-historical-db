@@ -495,3 +495,92 @@ Routes:
 - **Weekly data updates**: automated ingestion of new game results after each NFL week
 - **Scorebug widget**: upcoming games within the current week's schedule, showing spread (real-time) and weather forecast (daily updates)
 - These will be addressed in future cycles with live data integration and a scorebug component on the dashboard
+
+---
+
+## Cycle 9 — Team Profile Page
+
+**Date:** 2026-02-06
+
+### Hypothesis
+Build a team profile page at `/teams/[name]` that displays comprehensive team statistics: all-time record, home/away/playoff splits, ATS record with cover rate, O/U trends, scoring averages, recent games, and season-by-season breakdown. The pure stats computation should be fully testable without a database. Team abbreviations throughout the app should link to their respective profile pages.
+
+### Changes
+1. **Created `src/lib/team-stats.ts`** — Pure team stats computation module:
+   - `GameForStats` interface — minimal shape for stats computation (no DB dependency)
+   - `TeamRecord`, `ATSRecord`, `OURecord`, `SeasonRecord`, `TeamStatsResult` interfaces
+   - `computeTeamStats(games, teamName)` — computes all-time record, ATS record (with home/away perspective flip), O/U record, home/away/playoff splits, avg points for/against, and season-by-season breakdowns
+   - ATS perspective flip: `spreadResult` is stored from home team perspective — when computing for the away team, COVERED↔LOST are swapped
+   - Season records sorted descending (most recent first)
+2. **Created `src/app/api/teams/[name]/stats/route.ts`** — `GET /api/teams/:name/stats`:
+   - Looks up team by exact name, returns 404 if not found
+   - Fetches all games for the team (home + away) with related data
+   - Maps DB rows to `GameForStats` interface and calls `computeTeamStats()`
+   - Returns team info, computed stats, recent games (last 10), and total game count
+   - URL-decodes team name for names with spaces
+3. **Added `useTeamStats(teamName)` to `src/hooks/use-games.ts`** — TanStack Query hook:
+   - Fetches `/api/teams/${encodeURIComponent(teamName)}/stats`
+   - 5-minute stale time, `enabled: !!teamName` guard
+4. **Created `src/components/team-profile.tsx`** — Full team profile view:
+   - **Team header**: abbreviation, city + nickname, conference/division, game count, Historical badge for inactive teams
+   - **Record overview**: 4 stat boxes (All-Time, Home, Away, Playoffs) with win-loss-tie and win percentage
+   - **Betting trends panel**: ATS record, cover rate (green ≥.500, red <.500), O/U record
+   - **Scoring panel**: avg points for/against, avg margin (green positive, red negative)
+   - **Recent games**: last 10 with W/L/T indicator, vs/@ opponent, score, ATS/O/U results, date — clickable to game detail
+   - **Season-by-season table**: year, record, win%, ATS, cover%, PF, PA — responsive column hiding
+   - Loading, error, and empty states matching existing design patterns
+   - Reuses `InfoPanel` / `DataRow` / `StatBox` component patterns from game detail
+5. **Created `src/app/teams/[name]/page.tsx`** — Client page component:
+   - Uses `use(params)` with `decodeURIComponent` for Next.js 16 async params
+   - Passes `useTeamStats` hook data to `TeamProfile` component
+6. **Updated `src/components/game-table.tsx`** — Added team navigation links:
+   - Team abbreviations in the Matchup column are now clickable with `onClick` + `stopPropagation`
+   - Gold hover color (`hover:text-[#d4af37]`) on team abbreviations
+   - Row click still navigates to game detail, team click navigates to team profile
+7. **Updated `src/components/game-detail.tsx`** — Added team navigation links:
+   - Team abbreviations in the scoreboard are now clickable
+   - Gold hover color on abbreviations
+8. **Created `src/__tests__/team-stats.test.ts`** — 31 tests covering:
+   - Empty games, home/away win/loss/tie, win percentage calculation
+   - Home/away record splits
+   - Playoff record (only counts playoff games, zeroes for none)
+   - ATS: home COVERED/LOST/PUSH, away perspective flip (COVERED↔LOST), null skip, cover pct
+   - O/U: OVER/UNDER/PUSH counts, null skip
+   - Scoring averages: home/away perspective, empty games
+   - Season breakdown: grouping, descending sort, per-season record/ATS/points
+   - Full integration test with multi-season dataset
+9. **Created `src/__tests__/team-profile.test.tsx`** — 23 tests covering:
+   - Loading, error, back button states
+   - Team info: abbreviation, name, conference/division, total games
+   - Records: all-time, home, away, playoff
+   - Betting: ATS record, cover rate, O/U record
+   - Scoring: avg points for, avg points against
+   - Recent games: W/L indicators, vs/@ opponent format, spread/O/U results
+   - Season table: years, records
+   - Historical badge for inactive teams
+   - Empty recent games message
+
+### Outcome
+- `npm run build` — **PASS** (11 routes including new `/api/teams/[name]/stats` and `/teams/[name]`)
+- `npm test` — **PASS** (242/242 tests passing)
+- `npx eslint src/` — **PASS** (0 errors)
+
+### Verification
+```
+Test Files  10 passed (10)
+     Tests  242 passed (242)
+  Duration  1.39s
+```
+
+Routes:
+```
+├ ƒ /api/teams/[name]/stats    ← NEW
+├ ƒ /teams/[name]              ← NEW
+```
+
+### Key Learnings
+- ATS records are stored from the home team's perspective in the database — when computing stats for a specific team, the perspective must be flipped for away games (home COVERED = away LOST, home LOST = away COVERED)
+- `(0 / 1).toFixed(3)` returns `"0.000"` (with leading zero), not `".000"` — the `.000` format only appears when dividing by zero and returning the fallback. Tests must account for this difference
+- `stopPropagation()` on nested clickable elements prevents the parent row's click handler from firing — allows team links inside clickable game rows
+- The same pure-logic separation pattern (Cycles 2, 4, 5, 6) continues to pay dividends: `computeTeamStats` is a pure function with 31 tests, fully independent of Prisma or API layer
+- URL encoding is needed for team names with spaces (e.g., "Kansas City Chiefs" → "Kansas%20City%20Chiefs") — both the hook and the API route handle encoding/decoding

@@ -147,7 +147,10 @@ export default function GameDetail({ game, isLoading, isError }: GameDetailProps
           <div className="grid grid-cols-3">
             {/* Away team */}
             <div className={`flex flex-col items-center justify-center px-4 py-8 ${awayWon ? "bg-[#d4af37]/5" : ""}`}>
-              <span className="text-3xl font-bold tracking-tight text-[#e0e0e0] sm:text-4xl">
+              <span
+                onClick={() => router.push(`/teams/${encodeURIComponent(game.awayTeam.name)}`)}
+                className="cursor-pointer text-3xl font-bold tracking-tight text-[#e0e0e0] transition-colors hover:text-[#d4af37] sm:text-4xl"
+              >
                 {game.awayTeam.abbreviation}
               </span>
               <span className="mt-1 text-xs text-[#8899aa] sm:text-sm">{game.awayTeam.city}</span>
@@ -177,7 +180,10 @@ export default function GameDetail({ game, isLoading, isError }: GameDetailProps
 
             {/* Home team */}
             <div className={`flex flex-col items-center justify-center px-4 py-8 ${homeWon ? "bg-[#d4af37]/5" : ""}`}>
-              <span className="text-3xl font-bold tracking-tight text-[#e0e0e0] sm:text-4xl">
+              <span
+                onClick={() => router.push(`/teams/${encodeURIComponent(game.homeTeam.name)}`)}
+                className="cursor-pointer text-3xl font-bold tracking-tight text-[#e0e0e0] transition-colors hover:text-[#d4af37] sm:text-4xl"
+              >
                 {game.homeTeam.abbreviation}
               </span>
               <span className="mt-1 text-xs text-[#8899aa] sm:text-sm">{game.homeTeam.city}</span>

@@ -70,3 +70,16 @@ export function useSeasons() {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+export function useTeamStats(teamName: string) {
+  return useQuery({
+    queryKey: ["teamStats", teamName],
+    queryFn: async () => {
+      const res = await fetch(`/api/teams/${encodeURIComponent(teamName)}/stats`);
+      if (!res.ok) throw new Error("Failed to fetch team stats");
+      return res.json();
+    },
+    enabled: !!teamName,
+    staleTime: 5 * 60 * 1000,
+  });
+}
