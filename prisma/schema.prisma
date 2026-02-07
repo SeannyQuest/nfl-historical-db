@@ -8,11 +8,44 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Enums ───────────────────────────────────────────────
+
 enum SubscriptionTier {
   FREE
   PRO
   ADMIN
 }
+
+enum SeasonType {
+  REGULAR
+  POSTSEASON
+}
+
+enum SpreadResult {
+  COVERED
+  LOST
+  PUSH
+}
+
+enum OUResult {
+  OVER
+  UNDER
+  PUSH
+}
+
+enum Conference {
+  AFC
+  NFC
+}
+
+enum Division {
+  EAST
+  WEST
+  NORTH
+  SOUTH
+}
+
+// ─── User ────────────────────────────────────────────────
 
 model User {
   id               String           @id @default(cuid())
@@ -21,4 +54,98 @@ model User {
   subscriptionTier SubscriptionTier @default(FREE)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+}
+
+// ─── Team ────────────────────────────────────────────────
+
+model Team {
+  id           String     @id @default(cuid())
+  name         String     @unique // e.g. "Kansas City Chiefs"
+  abbreviation String     @unique // e.g. "KC"
+  city         String     // e.g. "Kansas City"
+  nickname     String     // e.g. "Chiefs"
+  conference   Conference
+  division     Division
+  franchiseKey String     // Groups historical names, e.g. "Raiders" for OAK/LA/LV
+  isActive     Boolean    @default(true)
+
+  homeGames Game[] @relation("HomeTeam")
+  awayGames Game[] @relation("AwayTeam")
+  wonGames  Game[] @relation("Winner")
+
+  @@index([franchiseKey])
+}
+
+// ─── Season ──────────────────────────────────────────────
+
+model Season {
+  id   String     @id @default(cuid())
+  year Int        @unique
+  type SeasonType @default(REGULAR)
+
+  games Game[]
+
+  @@index([year])
+}
+
+// ─── Game ────────────────────────────────────────────────
+
+model Game {
+  id         String   @id @default(cuid())
+  seasonId   String
+  season     Season   @relation(fields: [seasonId], references: [id])
+  week       String   // "1"-"18", "WildCard", "Division", "ConfChamp", "SuperBowl"
+  date       DateTime
+  time       String?  // ET kickoff time
+  dayOfWeek  String   // "Sun", "Mon", "Thu", etc.
+  homeTeamId String
+  homeTeam   Team     @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeamId String
+  awayTeam   Team     @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  homeScore  Int
+  awayScore  Int
+  scoreDiff  Int      // homeScore - awayScore (positive = home win)
+  winnerId   String?  // null for ties
+  winner     Team?    @relation("Winner", fields: [winnerId], references: [id])
+  primetime  String?  // "MNF", "SNF", "TNF", or null
+  isPlayoff  Boolean  @default(false)
+
+  bettingLine BettingLine?
+  weather     Weather?
+
+  @@unique([date, homeTeamId, awayTeamId])
+  @@index([date])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+  @@index([seasonId, week])
+}
+
+// ─── BettingLine ─────────────────────────────────────────
+
+model BettingLine {
+  id            String        @id @default(cuid())
+  gameId        String        @unique
+  game          Game          @relation(fields: [gameId], references: [id])
+  spread        Float?        // From home team perspective (negative = home favored)
+  overUnder     Float?
+  moneylineHome Int?
+  moneylineAway Int?
+  spreadResult  SpreadResult? // From home team perspective
+  ouResult      OUResult?
+  source        String        @default("pfr") // "pfr", "aussportsbetting", "odds-api"
+
+  @@index([gameId])
+}
+
+// ─── Weather ─────────────────────────────────────────────
+
+model Weather {
+  id          String  @id @default(cuid())
+  gameId      String  @unique
+  game        Game    @relation(fields: [gameId], references: [id])
+  temperature Int?    // Fahrenheit
+  wind        String? // e.g. "12 mph"
+  conditions  String? // e.g. "Clear", "Rain", "Snow"
+
+  @@index([gameId])
 }

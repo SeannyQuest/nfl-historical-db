@@ -41,3 +41,53 @@ Test Files  1 passed (1)
 - Next.js 16 uses Turbopack by default for builds
 - `create-next-app` cannot run in a directory with existing files — required temp move of `scripts/`, `.github/`, and legacy files
 - Prisma 6 uses `prisma-client` provider (not `prisma-client-js`) and outputs to `src/generated/prisma` by default
+
+---
+
+## Cycle 2 — Schema: Core Database Models
+
+**Date:** 2026-02-06
+
+### Hypothesis
+Design the complete Prisma schema for games, teams, betting data, and weather. Create seed data for all 32 current NFL teams plus 14 historical franchise names. Validate schema and seed data integrity through tests.
+
+### Changes
+1. **Expanded Prisma schema** (`prisma/schema.prisma`) with full models:
+   - `Team` — name, abbreviation, city, nickname, conference, division, franchiseKey, isActive
+   - `Season` — year (unique), type (REGULAR/POSTSEASON)
+   - `Game` — seasonId, week, date, time, dayOfWeek, homeTeamId, awayTeamId, homeScore, awayScore, scoreDiff, winnerId, primetime, isPlayoff
+   - `BettingLine` — gameId (1:1), spread, overUnder, moneylineHome/Away, spreadResult, ouResult, source
+   - `Weather` — gameId (1:1), temperature, wind, conditions
+2. **Added enums:** `SeasonType`, `SpreadResult`, `OUResult`, `Conference`, `Division`
+3. **Added indexes:** Game(date), Game(homeTeamId), Game(awayTeamId), Game(seasonId, week), Team(franchiseKey), BettingLine(gameId), Weather(gameId)
+4. **Unique constraints:** Game(date, homeTeamId, awayTeamId) for deduplication
+5. **Created `prisma/team-data.ts`** — Pure data file with 32 active teams and 14 historical franchise names, importable without Prisma client dependency
+6. **Created `prisma/seed-teams.ts`** — Executable seed script using Prisma upsert, separated from data to allow testing without DB
+7. **Created `src/__tests__/schema.test.ts`** — 11 tests validating:
+   - 32 active teams, all historical marked inactive
+   - No duplicate names or abbreviations
+   - All required fields populated
+   - Valid conference/division values
+   - 8 divisions with 4 active teams each
+   - All FRANCHISE_MAP keys and historical names covered
+   - Franchise groupings correct (Raiders, Colts, Washington, Titans)
+8. **Updated `tsconfig.json`** — Excluded `prisma/seed-teams.ts` from Next.js build (uses dynamic Prisma import unavailable at build time)
+
+### Outcome
+- `npm run build` — **PASS**
+- `npm test` — **PASS** (13/13 tests passing)
+- `npx eslint src/` — **PASS** (0 errors)
+- `npx prisma validate` — **PASS** (schema valid)
+
+### Verification
+```
+Test Files  2 passed (2)
+     Tests  13 passed (13)
+  Duration  661ms
+```
+
+### Key Learnings
+- Separate seed data (pure TS arrays) from seed execution (Prisma client calls) to enable testing without a database connection
+- Vite's import analysis resolves dynamic `import()` paths even when they're unreachable at test time — fails if the module doesn't exist. Solution: isolate the dynamic import in a separate file excluded from test scope
+- `prisma/seed-teams.ts` must be excluded from `tsconfig.json` because the generated Prisma client doesn't exist until `prisma generate` runs against a real DB
+- The FRANCHISE_MAP from `generate_data.py` maps 14 historical names to 9 franchise keys — seed data covers all of them
