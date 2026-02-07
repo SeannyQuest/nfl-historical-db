@@ -89,8 +89,12 @@ export default function SyncPanel({
   isError,
 }: SyncPanelProps) {
   const [usage, setUsage] = useState<AllUsage | null>(initialUsage);
+  const [sport, setSport] = useState<"nfl" | "ncaafb" | "ncaamb">("nfl");
   const [year, setYear] = useState(new Date().getFullYear());
   const [week, setWeek] = useState(1);
+  const [date, setDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
   const [type, setType] = useState("REG");
   const [syncing, setSyncing] = useState(false);
   const [log, setLog] = useState<LogEntry[]>([]);
@@ -123,8 +127,9 @@ export default function SyncPanel({
   async function handleSync(action: string) {
     setSyncing(true);
     try {
-      const body: Record<string, unknown> = { action, year, type };
-      if (action === "scores") body.week = week;
+      const body: Record<string, unknown> = { action, sport, year, type };
+      if (action === "scores" && sport === "nfl") body.week = week;
+      if (action === "daily" && sport === "ncaamb") body.date = date;
 
       const res = await fetch("/api/sync", {
         method: "POST",
@@ -153,7 +158,11 @@ export default function SyncPanel({
 
       // Update usage from response
       if (data.usage) {
-        setUsage((prev) => (prev ? { ...prev, nfl: data.usage } : prev));
+        const sportKey =
+          sport === "nfl" ? "nfl" : sport === "ncaafb" ? "ncaafb" : "ncaamb";
+        setUsage((prev) =>
+          prev ? { ...prev, [sportKey]: data.usage } : prev
+        );
       }
     } catch (err) {
       addLog(
@@ -192,6 +201,17 @@ export default function SyncPanel({
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 10 }, (_, i) => currentYear - i);
   const weeks = Array.from({ length: 18 }, (_, i) => i + 1);
+  const cfbWeeks = Array.from({ length: 15 }, (_, i) => i + 1);
+
+  const currentUsage =
+    sport === "nfl"
+      ? usage.nfl
+      : sport === "ncaafb"
+        ? usage.ncaafb
+        : usage.ncaamb;
+
+  const sportLabel =
+    sport === "nfl" ? "NFL" : sport === "ncaafb" ? "College Football" : "College Basketball";
 
   return (
     <div className="space-y-6">
@@ -207,10 +227,27 @@ export default function SyncPanel({
         </div>
       </div>
 
+      {/* Sport tabs */}
+      <div className="flex gap-2 border-b border-[#1e2a45]">
+        {(["nfl", "ncaafb", "ncaamb"] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setSport(s)}
+            className={`px-4 py-2 font-medium transition-colors ${
+              sport === s
+                ? "border-b-2 border-[#d4af37] text-[#d4af37]"
+                : "text-[#8899aa] hover:text-[#ccc]"
+            }`}
+          >
+            {s === "nfl" ? "NFL" : s === "ncaafb" ? "CFB" : "CBB"}
+          </button>
+        ))}
+      </div>
+
       {/* Sync controls */}
       <div className="rounded-lg border border-[#1e2a45] bg-[#141b2d] p-4">
         <h2 className="mb-4 text-lg font-semibold text-[#f0f0f0]">
-          NFL Sync Controls
+          {sportLabel} Sync Controls
         </h2>
 
         {/* Selectors */}
@@ -231,54 +268,101 @@ export default function SyncPanel({
             </select>
           </div>
 
-          <div>
-            <label className="mb-1 block text-xs text-[#8899aa]">Type</label>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="rounded border border-[#2a3a55] bg-[#0a0f1a] px-3 py-1.5 text-sm text-[#f0f0f0]"
-              disabled={syncing}
-            >
-              <option value="REG">Regular Season</option>
-              <option value="PST">Postseason</option>
-              <option value="PRE">Preseason</option>
-            </select>
-          </div>
+          {sport !== "ncaamb" && (
+            <div>
+              <label className="mb-1 block text-xs text-[#8899aa]">Type</label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                className="rounded border border-[#2a3a55] bg-[#0a0f1a] px-3 py-1.5 text-sm text-[#f0f0f0]"
+                disabled={syncing}
+              >
+                <option value="REG">Regular Season</option>
+                <option value="PST">Postseason</option>
+                {sport === "nfl" && <option value="PRE">Preseason</option>}
+              </select>
+            </div>
+          )}
 
-          <div>
-            <label className="mb-1 block text-xs text-[#8899aa]">Week</label>
-            <select
-              value={week}
-              onChange={(e) => setWeek(Number(e.target.value))}
-              className="rounded border border-[#2a3a55] bg-[#0a0f1a] px-3 py-1.5 text-sm text-[#f0f0f0]"
-              disabled={syncing}
-            >
-              {weeks.map((w) => (
-                <option key={w} value={w}>
-                  Week {w}
-                </option>
-              ))}
-            </select>
-          </div>
+          {sport === "nfl" && (
+            <div>
+              <label className="mb-1 block text-xs text-[#8899aa]">Week</label>
+              <select
+                value={week}
+                onChange={(e) => setWeek(Number(e.target.value))}
+                className="rounded border border-[#2a3a55] bg-[#0a0f1a] px-3 py-1.5 text-sm text-[#f0f0f0]"
+                disabled={syncing}
+              >
+                {weeks.map((w) => (
+                  <option key={w} value={w}>
+                    Week {w}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {sport === "ncaafb" && (
+            <div>
+              <label className="mb-1 block text-xs text-[#8899aa]">Week</label>
+              <select
+                value={week}
+                onChange={(e) => setWeek(Number(e.target.value))}
+                className="rounded border border-[#2a3a55] bg-[#0a0f1a] px-3 py-1.5 text-sm text-[#f0f0f0]"
+                disabled={syncing}
+              >
+                {cfbWeeks.map((w) => (
+                  <option key={w} value={w}>
+                    Week {w}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {sport === "ncaamb" && (
+            <div>
+              <label className="mb-1 block text-xs text-[#8899aa]">Date</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="rounded border border-[#2a3a55] bg-[#0a0f1a] px-3 py-1.5 text-sm text-[#f0f0f0]"
+                disabled={syncing}
+              />
+            </div>
+          )}
         </div>
 
         {/* Action buttons */}
         <div className="flex flex-wrap gap-3">
           <button
             onClick={() => handleSync("schedule")}
-            disabled={syncing || usage.nfl.remaining <= 0}
+            disabled={syncing || currentUsage.remaining <= 0}
             className="rounded border border-[#d4af37] bg-[#d4af37]/10 px-4 py-2 text-sm font-medium text-[#d4af37] transition-colors hover:bg-[#d4af37]/20 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {syncing ? "Syncing..." : "Sync Schedule"}
           </button>
 
-          <button
-            onClick={() => handleSync("scores")}
-            disabled={syncing || usage.nfl.remaining <= 0}
-            className="rounded border border-[#22c55e] bg-[#22c55e]/10 px-4 py-2 text-sm font-medium text-[#22c55e] transition-colors hover:bg-[#22c55e]/20 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {syncing ? "Syncing..." : "Sync Scores"}
-          </button>
+          {sport === "nfl" && (
+            <button
+              onClick={() => handleSync("scores")}
+              disabled={syncing || currentUsage.remaining <= 0}
+              className="rounded border border-[#22c55e] bg-[#22c55e]/10 px-4 py-2 text-sm font-medium text-[#22c55e] transition-colors hover:bg-[#22c55e]/20 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {syncing ? "Syncing..." : "Sync Scores"}
+            </button>
+          )}
+
+          {sport === "ncaamb" && (
+            <button
+              onClick={() => handleSync("daily")}
+              disabled={syncing || currentUsage.remaining <= 0}
+              className="rounded border border-[#22c55e] bg-[#22c55e]/10 px-4 py-2 text-sm font-medium text-[#22c55e] transition-colors hover:bg-[#22c55e]/20 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {syncing ? "Syncing..." : "Sync Daily"}
+            </button>
+          )}
 
           <button
             onClick={refreshUsage}

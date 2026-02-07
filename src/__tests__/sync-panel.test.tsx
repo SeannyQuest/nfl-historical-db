@@ -63,12 +63,14 @@ describe("SyncPanel", () => {
         isError={false}
       />
     );
-    expect(screen.getByText("NFL")).toBeInTheDocument();
+    // "NFL" appears as both usage bar label and sport tab
+    const nflElements = screen.getAllByText("NFL");
+    expect(nflElements.length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("50 / 1000")).toBeInTheDocument();
     expect(screen.getByText("950 remaining")).toBeInTheDocument();
   });
 
-  it("shows all three sport usage bars", () => {
+  it("shows all three sport usage bars and sport tabs", () => {
     render(
       <SyncPanel
         initialUsage={sampleUsage}
@@ -76,9 +78,14 @@ describe("SyncPanel", () => {
         isError={false}
       />
     );
-    expect(screen.getByText("NFL")).toBeInTheDocument();
+    // NFL appears as both usage label and sport tab
+    const nflElements = screen.getAllByText("NFL");
+    expect(nflElements.length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("College Football")).toBeInTheDocument();
     expect(screen.getByText("College Basketball")).toBeInTheDocument();
+    // Sport selector tabs
+    expect(screen.getByText("CFB")).toBeInTheDocument();
+    expect(screen.getByText("CBB")).toBeInTheDocument();
   });
 
   it("shows warning indicator when usage is high", () => {

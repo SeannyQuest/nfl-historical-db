@@ -59,6 +59,120 @@ export default async function Navbar() {
             Playoffs
           </Link>
           <Link
+            href="/scoring"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Scoring
+          </Link>
+          <Link
+            href="/home-advantage"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Home Advantage
+          </Link>
+          <Link
+            href="/upsets"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Upsets
+          </Link>
+          <Link
+            href="/rivalries"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Rivalries
+          </Link>
+          <Link
+            href="/weather"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Weather
+          </Link>
+          <Link
+            href="/franchise-history"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Franchises
+          </Link>
+          <Link
+            href="/bye-week"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Bye Week
+          </Link>
+          <Link
+            href="/conference-comparison"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Conferences
+          </Link>
+          <Link
+            href="/game-finder"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Game Finder
+          </Link>
+          <Link
+            href="/eras"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Eras
+          </Link>
+          <Link
+            href="/primetime"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Primetime
+          </Link>
+          <Link
+            href="/streaks"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Streaks
+          </Link>
+          <Link
+            href="/division-history"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Divisions
+          </Link>
+          <Link
+            href="/close-games"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Close Games
+          </Link>
+          <Link
+            href="/power-rankings"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Power Rankings
+          </Link>
+          <Link
+            href="/betting-value"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Betting Value
+          </Link>
+          <Link
+            href="/ats-leaderboard"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            ATS Leaderboard
+          </Link>
+          <Link
+            href="/schedule-strength"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Schedule Strength
+          </Link>
+          <Link
+            href="/coaching"
+            className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
+          >
+            Coaching
+          </Link>
+          <Link
             href="/admin"
             className="text-sm text-[#8899aa] transition-colors hover:text-[#d4af37]"
           >
