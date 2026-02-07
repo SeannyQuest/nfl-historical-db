@@ -1,5 +1,5 @@
 import { render, screen, cleanup } from "@testing-library/react";
-import { describe, it, expect, afterEach, vi } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import ScoringDashboard from "@/components/scoring-dashboard";
 import type { ScoringDistributionResult } from "@/lib/scoring-distribution";
 

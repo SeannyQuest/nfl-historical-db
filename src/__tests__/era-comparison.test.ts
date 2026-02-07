@@ -173,7 +173,6 @@ describe("era-comparison.ts", () => {
         mockGame(2015, 20, 21), // Away wins
       ];
       const result = computeEraComparison(games);
-      const premerger = result.eras.find((e) => e.era === "Pre-Merger");
       expect(result.highestHomeWinRateEra.era).toBe("Pre-Merger");
       expect(parseFloat(result.highestHomeWinRateEra.pct)).toBeGreaterThan(0.5);
     });
@@ -199,7 +198,8 @@ describe("era-comparison.ts", () => {
     });
 
     it("includes season and team info in notable records", () => {
-      const games = Array.from({ length: 16 }, (_, i) => ({
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const games = Array.from({ length: 16 }, (_: unknown, _i: number) => ({
         ...mockGame(2015),
         season: 2015,
         isPlayoff: false,

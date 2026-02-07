@@ -165,6 +165,7 @@ export function computeOverUnderPerformers(games: PerformanceGame[]): OverUnderP
   }
 
   const luckyTeams: LuckyTeamTrend[] = Array.from(teamOverUnderMap.entries())
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     .filter(([_team, data]) => data.seasons.length >= 2)
     .map(([team, data]) => {
       const avgOverUnder = Math.round((data.values.reduce((a, b) => a + b, 0) / data.values.length) * 100) / 100;

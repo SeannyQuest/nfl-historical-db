@@ -95,7 +95,8 @@ export function computePowerRankings(games: PRGame[], season: number): PowerRank
 
   // Build SOS (strength of schedule) based on opponents' win percentages
   const sosMap = new Map<string, number>();
-  for (const [team, stats] of teamStats) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  for (const [team, _stats] of teamStats) {
     let totalOppWinPct = 0;
     let opponentCount = 0;
 
@@ -128,7 +129,8 @@ export function computePowerRankings(games: PRGame[], season: number): PowerRank
       const recentWins = lastTen.reduce((a, b) => a + b, 0);
 
       // Score: 40% win%, 20% SOS, 25% point diff, 15% recent form
-      const score = winPct * 0.4 + sos * 0.2 + (pd > 0 ? Math.min(pd / 100, 1) : 0) * 0.25 + (recentWins / 10) * 0.15;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const _score = winPct * 0.4 + sos * 0.2 + (pd > 0 ? Math.min(pd / 100, 1) : 0) * 0.25 + (recentWins / 10) * 0.15;
 
       return {
         rank: 0, // Will be assigned after sorting

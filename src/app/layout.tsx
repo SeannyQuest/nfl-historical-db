@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "@/lib/providers";
 import Navbar from "@/components/navbar";
+import ChatWindow from "@/components/ChatWindow";
 
 export const metadata: Metadata = {
   title: "GridIron Intel",
@@ -19,6 +20,7 @@ export default function RootLayout({
         <Providers>
           <Navbar />
           {children}
+          <ChatWindow />
         </Providers>
       </body>
     </html>

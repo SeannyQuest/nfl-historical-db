@@ -213,7 +213,8 @@ export function computeDivisionDominance(games: DivisionGame[]): DivisionDominan
   }
 
   const dynastyDivisions: DynastyDivision[] = [...seasonDivisionStats.entries()]
-    .filter(([_, seasonMap]) => seasonMap.size >= 2) // Multiple seasons
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    .filter(([_division, seasonMap]) => seasonMap.size >= 2) // Multiple seasons
     .map(([division, seasonMap]) => {
       const seasons = [...seasonMap.keys()].sort((a, b) => a - b);
       const winPcts: number[] = [];

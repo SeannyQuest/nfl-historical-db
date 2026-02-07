@@ -48,12 +48,23 @@ enum Division {
 // ─── User ────────────────────────────────────────────────
 
 model User {
-  id               String           @id @default(cuid())
-  email            String?          @unique
-  name             String?
-  subscriptionTier SubscriptionTier @default(FREE)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  id                      String           @id @default(cuid())
+  email                   String           @unique
+  name                    String?
+  username                String           @unique
+  passwordHash            String
+  emailVerified           Boolean          @default(false)
+  verificationToken       String?
+  resetToken              String?
+  resetTokenExpiry        DateTime?
+  failedLoginAttempts     Int              @default(0)
+  lockedUntil             DateTime?
+  subscriptionTier        SubscriptionTier @default(FREE)
+  stripeCustomerId        String?          @unique
+  stripeSubscriptionId    String?          @unique
+  stripeSubscriptionStatus String?
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
 }
 
 // ─── Team ────────────────────────────────────────────────
@@ -110,6 +121,26 @@ model Game {
   primetime  String?  // "MNF", "SNF", "TNF", or null
   isPlayoff  Boolean  @default(false)
 
+  // Quarter scores
+  homeQ1     Int?
+  homeQ2     Int?
+  homeQ3     Int?
+  homeQ4     Int?
+  homeOT     Int?
+  awayQ1     Int?
+  awayQ2     Int?
+  awayQ3     Int?
+  awayQ4     Int?
+  awayOT     Int?
+
+  // Turnovers
+  homeTurnovers      Int?
+  awayTurnovers      Int?
+  homeInterceptions  Int?
+  awayInterceptions  Int?
+  homeFumbles        Int?
+  awayFumbles        Int?
+
   bettingLine BettingLine?
   weather     Weather?
 
@@ -146,6 +177,117 @@ model ApiUsage {
   calledAt DateTime @default(now())
 
   @@index([sport, calledAt])
+}
+
+// ─── CFB Team ──────────────────────────────────────────
+
+model CfbTeam {
+  id           String    @id @default(cuid())
+  name         String    // e.g. "Alabama Crimson Tide"
+  alias        String    @unique // e.g. "ALA"
+  market       String    // e.g. "Alabama"
+  mascot       String?   // e.g. "Crimson Tide"
+  conference   String?   // e.g. "SEC", "Big Ten"
+  srId         String?   @unique // Sportsradar ID
+  isActive     Boolean   @default(true)
+
+  homeGames CfbGame[] @relation("CfbHomeTeam")
+  awayGames CfbGame[] @relation("CfbAwayTeam")
+
+  @@index([conference])
+}
+
+// ─── CFB Season ────────────────────────────────────────
+
+model CfbSeason {
+  id   String @id @default(cuid())
+  year Int    @unique
+  type String @default("REG") // "REG", "PST"
+
+  games CfbGame[]
+
+  @@index([year])
+}
+
+// ─── CFB Game ──────────────────────────────────────────
+
+model CfbGame {
+  id         String    @id @default(cuid())
+  seasonId   String
+  season     CfbSeason @relation(fields: [seasonId], references: [id])
+  week       String    // "1"-"15", "Playoff", "Bowl"
+  date       DateTime
+  time       String?
+  dayOfWeek  String
+  homeTeamId String
+  homeTeam   CfbTeam   @relation("CfbHomeTeam", fields: [homeTeamId], references: [id])
+  awayTeamId String
+  awayTeam   CfbTeam   @relation("CfbAwayTeam", fields: [awayTeamId], references: [id])
+  homeScore  Int       @default(0)
+  awayScore  Int       @default(0)
+  scoreDiff  Int       @default(0)
+  isPlayoff  Boolean   @default(false)
+  srId       String?   @unique // Sportsradar game ID
+
+  @@unique([date, homeTeamId, awayTeamId])
+  @@index([seasonId, week])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+}
+
+// ─── CBB Team ──────────────────────────────────────────
+
+model CbbTeam {
+  id           String    @id @default(cuid())
+  name         String    // e.g. "Duke Blue Devils"
+  alias        String    @unique // e.g. "DUK"
+  market       String    // e.g. "Duke"
+  mascot       String?
+  conference   String?   // e.g. "ACC", "Big Ten"
+  srId         String?   @unique
+  isActive     Boolean   @default(true)
+
+  homeGames CbbGame[] @relation("CbbHomeTeam")
+  awayGames CbbGame[] @relation("CbbAwayTeam")
+
+  @@index([conference])
+}
+
+// ─── CBB Season ────────────────────────────────────────
+
+model CbbSeason {
+  id   String @id @default(cuid())
+  year Int    @unique
+
+  games CbbGame[]
+
+  @@index([year])
+}
+
+// ─── CBB Game ──────────────────────────────────────────
+
+model CbbGame {
+  id            String    @id @default(cuid())
+  seasonId      String
+  season        CbbSeason @relation(fields: [seasonId], references: [id])
+  date          DateTime
+  time          String?
+  dayOfWeek     String
+  homeTeamId    String
+  homeTeam      CbbTeam   @relation("CbbHomeTeam", fields: [homeTeamId], references: [id])
+  awayTeamId    String
+  awayTeam      CbbTeam   @relation("CbbAwayTeam", fields: [awayTeamId], references: [id])
+  homeScore     Int       @default(0)
+  awayScore     Int       @default(0)
+  scoreDiff     Int       @default(0)
+  isTournament  Boolean   @default(false)
+  tournamentRound String?  // "First Four", "Round of 64", "Round of 32", "Sweet 16", "Elite Eight", "Final Four", "Championship"
+  srId          String?   @unique
+
+  @@unique([date, homeTeamId, awayTeamId])
+  @@index([seasonId])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
 }
 
 // ─── Weather ─────────────────────────────────────────────

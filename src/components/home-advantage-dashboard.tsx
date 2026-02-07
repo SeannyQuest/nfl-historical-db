@@ -116,7 +116,8 @@ function BreakdownTable({
 
 function TeamTable({
   teams,
-  title,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _title,
 }: {
   teams: Array<{ team: string; homeWins: number; homeLosses: number; homeWinPct: string }>;
   title: string;

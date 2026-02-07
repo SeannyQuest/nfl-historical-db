@@ -150,7 +150,10 @@ export function computeTrapGames(games: TrapGame[]): TrapGamesResult {
 
   // Build trap game frequency (only include seasons with big favorite games)
   const trapGameFrequency: TrapGameFrequencyRecord[] = [...trapCountBySeasonMap]
-    .filter(([_, data]) => data.total > 0)
+    .filter(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ([_season, data]) => data.total > 0
+    )
     .map(([season, data]) => ({
       season,
       trapGames: data.traps,

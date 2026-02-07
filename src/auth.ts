@@ -1,5 +1,9 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { PrismaClient } from "@/generated/prisma/client";
+import { verifyPassword, isAccountLocked, LOCKOUT_THRESHOLD, LOCKOUT_DURATION_MINUTES } from "@/lib/auth-utils";
+
+const prisma = new PrismaClient();
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: "jwt" },
@@ -16,22 +20,85 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const username = credentials?.username as string | undefined;
         const password = credentials?.password as string | undefined;
 
-        if (
-          username === process.env.AUTH_USERNAME &&
-          password === process.env.AUTH_PASSWORD
-        ) {
-          return {
-            id: "1",
-            name: "Admin",
-            email: "admin@gridiron-intel.com",
-          };
+        if (!username || !password) {
+          return null;
         }
 
-        return null;
+        try {
+          // Look up user by username
+          const user = await prisma.user.findFirst({
+            where: { username },
+          });
+
+          if (!user) {
+            return null;
+          }
+
+          // Check if account is locked
+          if (isAccountLocked(user.lockedUntil)) {
+            return null;
+          }
+
+          // Verify password
+          const passwordValid = await verifyPassword(password, user.passwordHash);
+
+          if (!passwordValid) {
+            // Increment failed login attempts
+            const newFailedAttempts = user.failedLoginAttempts + 1;
+            let lockedUntil = user.lockedUntil;
+
+            if (newFailedAttempts >= LOCKOUT_THRESHOLD) {
+              lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MINUTES * 60 * 1000);
+            }
+
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                failedLoginAttempts: newFailedAttempts,
+                lockedUntil,
+              },
+            });
+
+            return null;
+          }
+
+          // Reset failed login attempts on successful login
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              failedLoginAttempts: 0,
+              lockedUntil: null,
+            },
+          });
+
+          return {
+            id: user.id,
+            name: user.name || user.username,
+            email: user.email,
+            subscriptionTier: user.subscriptionTier,
+          };
+        } catch (error) {
+          console.error("Auth error:", error);
+          return null;
+        }
       },
     }),
   ],
   callbacks: {
+    jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.subscriptionTier = (user as { subscriptionTier?: string }).subscriptionTier;
+      }
+      return token;
+    },
+    session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string;
+        (session.user as { subscriptionTier?: string }).subscriptionTier = token.subscriptionTier as string | undefined;
+      }
+      return session;
+    },
     authorized({ auth }) {
       return !!auth?.user;
     },

@@ -129,7 +129,6 @@ export function identifyRivalries(games: RivalryGame[]): RivalriesResult {
     };
 
     // Update wins
-    const isTeam1Home = g.homeTeamName === entry.team1;
     if (g.winnerName === entry.team1) {
       entry.team1Wins++;
     } else if (g.winnerName === entry.team2) {
@@ -165,7 +164,8 @@ export function identifyRivalries(games: RivalryGame[]): RivalriesResult {
       return { ...r, winDiff };
     })
     .sort((a, b) => a.winDiff - b.winDiff)
-    .map(({ winDiff, ...r }) => r)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    .map(({ winDiff: _winDiff, ...r }) => r)
     .slice(0, 15);
 
   // Highest scoring rivalries

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import GameFinder from "@/components/game-finder";
 
 vi.mock("@/hooks/use-games", () => ({
@@ -204,7 +204,6 @@ describe("GameFinder", () => {
   });
 
   it("handles filter changes", () => {
-    const { useGameFinder } = useGamesHooks;
     render(<GameFinder />);
     const minScoreInput = screen.getAllByPlaceholderText("0")[0] as HTMLInputElement;
     fireEvent.change(minScoreInput, { target: { value: "20" } });
@@ -212,11 +211,11 @@ describe("GameFinder", () => {
   });
 
   it("allows exporting games as JSON", async () => {
-    const createElementSpy = vi.spyOn(document, "createElement");
-    const appendChildSpy = vi.spyOn(document.body, "appendChild");
-    const removeChildSpy = vi.spyOn(document.body, "removeChild");
     const createObjectURLSpy = vi.spyOn(URL, "createObjectURL");
-    const revokeObjectURLSpy = vi.spyOn(URL, "revokeObjectURL");
+    vi.spyOn(document, "createElement");
+    vi.spyOn(document.body, "appendChild");
+    vi.spyOn(document.body, "removeChild");
+    vi.spyOn(URL, "revokeObjectURL");
 
     render(<GameFinder />);
     const exportBtns = screen.getAllByText("Export as JSON");

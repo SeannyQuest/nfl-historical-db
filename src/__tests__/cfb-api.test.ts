@@ -294,7 +294,7 @@ describe("CFB schedule fetching", () => {
     };
     vi.mocked(sportsradarFetch).mockResolvedValueOnce(mockSchedule);
 
-    const result = await fetchCfbSchedule(2024, "PST");
+    await fetchCfbSchedule(2024, "PST");
 
     expect(sportsradarFetch).toHaveBeenCalledWith(
       expect.stringContaining("games/2024/PST/schedule.json"),

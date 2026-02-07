@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import HomeAdvantageDashboard from "@/components/home-advantage-dashboard";
 import type { HomeAdvantageResult } from "@/lib/home-advantage";

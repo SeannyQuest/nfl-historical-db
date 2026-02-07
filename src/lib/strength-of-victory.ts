@@ -65,7 +65,7 @@ export function computeStrengthOfVictory(
     [
       { team: g.homeTeamName, won: homeWon },
       { team: g.awayTeamName, won: !homeWon },
-    ].forEach(({ team, won }) => {
+    ].forEach(({ team }) => {
       if (!teamSeasonWinPct.has(team)) {
         teamSeasonWinPct.set(team, new Map());
       }

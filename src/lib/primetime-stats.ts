@@ -89,15 +89,11 @@ export function computePrimetimeStats(games: PrimetimeGame[]): PrimetimeStatsRes
   const teamSlotMap = new Map<string, { wins: number; losses: number; ties: number }>();
 
   let primetimeTotal = 0,
-    primetimeHomeScores = 0,
-    primetimeAwayScores = 0,
     primetimeHomeWins = 0,
     primetimeDecisions = 0,
     primetimeSpreadSum = 0,
     primetimeSpreadCount = 0;
   let nonprimetimeTotal = 0,
-    nonprimetimeHomeScores = 0,
-    nonprimetimeAwayScores = 0,
     nonprimetimeHomeWins = 0,
     nonprimetimeDecisions = 0,
     nonprimetimeSpreadSum = 0,
@@ -170,8 +166,6 @@ export function computePrimetimeStats(games: PrimetimeGame[]): PrimetimeStatsRes
 
     if (isPrimetime) {
       primetimeTotal += total;
-      primetimeHomeScores += g.homeScore;
-      primetimeAwayScores += g.awayScore;
       if (homeWon || awayWon) primetimeDecisions++;
       if (homeWon) primetimeHomeWins++;
       if (g.spread !== null) {
@@ -180,8 +174,6 @@ export function computePrimetimeStats(games: PrimetimeGame[]): PrimetimeStatsRes
       }
     } else {
       nonprimetimeTotal += total;
-      nonprimetimeHomeScores += g.homeScore;
-      nonprimetimeAwayScores += g.awayScore;
       if (homeWon || awayWon) nonprimetimeDecisions++;
       if (homeWon) nonprimetimeHomeWins++;
       if (g.spread !== null) {

@@ -116,14 +116,16 @@ describe("TeamSchema", () => {
   });
 
   it("rejects missing id", () => {
-    const { id: _, ...noId } = validTeam;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id: _id, ...noId } = validTeam;
     expect(() => TeamSchema.parse(noId)).toThrow();
   });
 });
 
 describe("TeamCreateSchema", () => {
   it("accepts team without id", () => {
-    const { id: _, ...create } = validTeam;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id: _id, ...create } = validTeam;
     expect(TeamCreateSchema.parse(create)).toEqual(create);
   });
 });
@@ -179,7 +181,8 @@ describe("GameSchema", () => {
 
 describe("GameCreateSchema", () => {
   it("accepts game without id", () => {
-    const { id: _, ...create } = validGame;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id: _id, ...create } = validGame;
     expect(GameCreateSchema.parse(create)).toBeDefined();
   });
 });

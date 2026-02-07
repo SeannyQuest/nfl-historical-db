@@ -4,8 +4,8 @@ import { NextResponse } from "next/server";
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
-  // Allow auth API routes and login page without authentication
-  if (pathname.startsWith("/api/auth") || pathname === "/login") {
+  // Allow auth API routes, login page, and signup page without authentication
+  if (pathname.startsWith("/api/auth") || pathname === "/login" || pathname === "/signup") {
     return NextResponse.next();
   }
 

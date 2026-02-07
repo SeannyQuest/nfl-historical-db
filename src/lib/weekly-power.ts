@@ -134,13 +134,13 @@ export function computeWeeklyPower(games: WeeklyGame[]): WeeklyPowerResult {
 
   // Build week-over-week view
   const weekOverWeek: WeekOverWeekPower[] = [];
-  const seasonTeamMap = new Map<string, Map<number, WeeklyRanking>>();
 
   for (const [seasonStr, weekMap] of seasonWeekData) {
     const season = parseInt(seasonStr, 10);
     const teamMap = new Map<string, WeeklyRanking[]>();
 
-    for (const [week, teams] of weekMap) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for (const [_week, teams] of weekMap) {
       for (const [team] of teams) {
         if (!teamMap.has(team)) {
           teamMap.set(team, []);

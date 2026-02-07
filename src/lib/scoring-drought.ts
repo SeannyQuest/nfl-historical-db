@@ -140,7 +140,8 @@ export function computeScoringDroughts(games: DroughtGame[]): ScoringDroughtResu
 
   // Finalize droughts (handle ongoing droughts at end of data)
   for (const [team, seasonMap] of teamDroughtMap) {
-    for (const [_, entry] of seasonMap) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for (const [_season, entry] of seasonMap) {
       if (entry.currentDrought) {
         const lastWeek = Math.max(
           ...games.filter((g) => g.homeTeamName === team || g.awayTeamName === team)

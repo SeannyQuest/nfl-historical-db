@@ -29,14 +29,6 @@ function InfoPanel({ title, children }: { title: string; children: React.ReactNo
   );
 }
 
-function DataRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between py-2">
-      <span className="text-sm text-[#8899aa]">{label}</span>
-      <span className="text-sm font-medium text-[#e0e0e0]">{value}</span>
-    </div>
-  );
-}
 
 function UpsetTable({
   upsets,

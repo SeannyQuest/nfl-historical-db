@@ -152,12 +152,8 @@ export function computeScoringDistribution(games: ScoringGame[]): ScoringDistrib
 
   // Overall stats
   let totalPoints = 0;
-  let totalHome = 0;
-  let totalAway = 0;
   for (const g of games) {
     totalPoints += g.homeScore + g.awayScore;
-    totalHome += g.homeScore;
-    totalAway += g.awayScore;
   }
 
   // Era/decade analysis

@@ -68,7 +68,6 @@ export function computeGarbageTimeAnalysis(
 
   for (const g of games) {
     const halftimeDiff = Math.abs(g.halftimeHomeScore - g.halftimeAwayScore);
-    const finalDiff = Math.abs(g.homeScore - g.awayScore);
 
     // Garbage time: margin at halftime >= 21 AND losing team scored more in Q4
     const isLosingTeam =

@@ -116,7 +116,8 @@ export function computeStreakMomentum(games: StreakGame[]): StreakMomentumResult
   }
 
   // Finalize current streaks
-  for (const [_, entry] of teamStreakMap) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  for (const [_team, entry] of teamStreakMap) {
     if (entry.currentStreak.length > 0) {
       entry.allStreaks.push(entry.currentStreak);
     }
@@ -206,7 +207,6 @@ export function computeStreakMomentum(games: StreakGame[]): StreakMomentumResult
       for (const g of streak.games) {
         if (g.spreadResult === null) continue;
 
-        const isWin = g.homeScore > g.awayScore;
         const atsWin = g.spreadResult === "COVERED" || g.spreadResult === "PUSH";
 
         if (streak.type === "win") {

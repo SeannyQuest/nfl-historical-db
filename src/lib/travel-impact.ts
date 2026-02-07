@@ -139,7 +139,6 @@ export function computeTravelImpact(games: TravelGame[]): TravelImpactResult {
   const teamTravelRecords: TeamTravelRecord[] = [...teamAwayMap.entries()]
     .map(([team, data]) => {
       const totalAway = data.wins + data.losses;
-      const crossTimezoneTotal = data.crossTimezoneWins + data.crossTimezoneLosses;
       const crossRecord = `${data.crossTimezoneWins}-${data.crossTimezoneLosses}`;
       return {
         team,
