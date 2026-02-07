@@ -1099,3 +1099,90 @@ Routes:
 - The tab navigation pattern (underline-style with gold border-bottom) provides a cleaner UX than the button-selector pattern used in Records — tabs work better when sections are mutually exclusive views of the same data domain
 - Filtering games at the API level (`where: { isPlayoff: true }`) is more efficient than fetching all 14K+ games and filtering in the computation — playoff games are ~5% of total, so this reduces data transfer significantly
 - `PlayoffSeasonSummary` naturally captures the "postseason story" for each year — games played, scoring trends, home advantage, and champion — making it useful for historical analysis and era comparison
+
+---
+
+## Cycle 16 — Sportsradar NFL Integration: Live Data Layer
+
+**Date:** 2026-02-07
+
+### Hypothesis
+Build the core Sportsradar API client infrastructure (rate limiter, call counter, usage tracking) plus NFL-specific sync logic that maps Sportsradar responses to our existing Game/Team/Season Prisma models. This enables live data ingestion from Sportsradar's NFL API v7 trial key, with a strategy to go sport-by-sport (NFL first, then College Football in Cycle 17, College Basketball in Cycle 18) to maximize trial key value within ~1,000 call / 30-day / 1 QPS limits.
+
+### Changes
+1. **Added `ApiUsage` model to Prisma schema** — Tracks every Sportsradar API call with sport, endpoint, and timestamp. Indexed on `[sport, calledAt]` for efficient 30-day window queries. Generated Prisma client with new model.
+2. **Created `src/lib/sportsradar/client.ts`** — Rate-limited API client:
+   - 1.1-second minimum interval between calls (1 QPS with safety margin)
+   - `sportsradarFetch<T>(url, options)` — enforces rate limit, logs to `ApiUsage`, handles 429 retry (up to 2 retries with exponential backoff), parses JSON response
+   - `logApiCall(sport, endpoint)` — creates ApiUsage record
+   - `getApiUsage(sport)` — returns used/quota/remaining/warning for 30-day window (warning at 80%)
+   - Key helpers for NFL, NCAAFB, NCAAMB environment variables
+   - `resetRateLimiter()` exported for test cleanup
+3. **Created `src/lib/sportsradar/types.ts`** — Full Sportsradar NFL response type definitions:
+   - `SRGame`, `SRTeam`, `SRWeek`, `SRVenue`, `SRBroadcast`, `SRWeather`, `SRScoring` interfaces
+   - `SRSeasonSchedule`, `SRWeeklySchedule`, `SRHierarchy`, `SRStandings` response types
+   - `SRStandingsConference`, `SRStandingsDivision`, `SRStandingsTeam` for standings hierarchy
+4. **Created `src/lib/sportsradar/nfl.ts`** — NFL API v7 endpoint wrappers:
+   - `getNflHierarchy()` — league hierarchy (conferences → divisions → teams)
+   - `getNflSeasonSchedule(year, type)` — full season schedule with all weeks and games
+   - `getNflWeeklySchedule(year, type, week)` — single week with scores for completed games
+   - `getNflStandings(year, type)` — current season standings
+   - Base URL: `https://api.sportradar.com/nfl/official/trial/v7/en`
+5. **Created `src/lib/sportsradar/sync-nfl.ts`** — NFL sync/upsert logic:
+   - `syncNflSchedule(year, type)` — fetches season schedule, maps SR games to our Game model, upserts via `@@unique([date, homeTeamId, awayTeamId])` constraint. Uses 1 API call.
+   - `syncNflScores(year, type, week)` — fetches weekly schedule, updates only closed/complete games with scores, winner, and score differential. Uses 1 API call.
+   - `mapWeekTitle()` — converts SR playoff titles to our format (Wild Card → WildCard, Divisional → Division, Conference → ConfChamp, Super Bowl → SuperBowl)
+   - `getDayOfWeek()`, `detectPrimetime()`, `formatKickoffTime()` — game metadata helpers
+   - Builds team abbreviation → ID map from active teams for SR alias matching
+   - Returns `SyncResult { synced, skipped, errors }` for each operation
+6. **Created `src/app/api/sync/route.ts`** — `POST /api/sync`:
+   - Body: `{ action: "schedule"|"scores", year?, week?, type? }`
+   - Checks API quota before making calls (returns 429 if exhausted)
+   - Returns `{ success, action, year, type, result, usage }`
+7. **Created `src/app/api/api-usage/route.ts`** — `GET /api/api-usage`:
+   - Returns usage stats for all three sports (NFL, NCAAFB, NCAAMB)
+   - Parallel fetching for efficiency
+8. **Created `src/components/sync-panel.tsx`** — Admin sync UI component:
+   - **Usage bars**: 3 progress bars (NFL, College Football, College Basketball) with used/quota, remaining count, warning indicator at 80%+
+   - **Sync controls**: year/type/week selectors, "Sync Schedule" and "Sync Scores" buttons (gold/green), "Refresh Usage" button
+   - **Sync log**: timestamped action log with success/error messages, auto-scrolling, max 20 entries
+   - Buttons disabled when quota exhausted or sync in progress
+   - Real-time usage updates after each sync operation
+9. **Created `src/app/admin/page.tsx`** — Admin page hosting the sync panel
+10. **Added `useApiUsage()` to `src/hooks/use-games.ts`** — TanStack Query hook with 30-second stale time
+11. **Updated `src/components/navbar.tsx`** — Added "Admin" nav link
+12. **Updated `.env.example`** — Added `SPORTSRADAR_NFL_KEY` placeholder
+13. **Created 4 test files:**
+    - `src/__tests__/sportsradar-client.test.ts` — 12 tests: API key helpers (missing/present), logApiCall record creation, getApiUsage (normal/warning/over-quota), sportsradarFetch (success/logging/error/429-retry)
+    - `src/__tests__/sync-nfl.test.ts` — 19 tests: mapWeekTitle (regular/WC/Div/Conf/SB/unknown), getDayOfWeek (Sun/Thu/Mon/Sat), detectPrimetime (MNF/SNF/TNF/early/Sat/non-primetime), formatKickoffTime (afternoon/evening/invalid)
+    - `src/__tests__/sync-panel.test.tsx` — 13 tests: loading/error/null states, usage bars (all sports, warning indicator), sync buttons, disabled on exhausted quota, selectors (year/type/week), section headings
+    - `src/__tests__/admin-page.test.tsx` — 2 tests: page title, description text
+
+### Outcome
+- `npm run build` — **PASS** (25 routes including new `/admin`, `/api/sync`, `/api/api-usage`)
+- `npm test` — **PASS** (565/565 tests passing)
+- `npx eslint src/` — **PASS** (0 errors)
+
+### Verification
+```
+Test Files  32 passed (32)
+     Tests  565 passed (565)
+  Duration  4.85s
+```
+
+Routes:
+```
+├ ƒ /admin           ← NEW
+├ ƒ /api/api-usage   ← NEW
+├ ƒ /api/sync        ← NEW
+```
+
+### Key Learnings
+- Sportsradar trial keys have ~1,000 calls / 30 days / 1 QPS limits — a timestamp-based rate limiter with 1.1s spacing (slightly over 1s) prevents 429s while maximizing throughput
+- The sport-by-sport strategy (NFL → CFB → CBB) maximizes each trial key's value by completing one sport's data import before moving to the next — avoids wasting calls on partially-imported datasets
+- Sportsradar's team `alias` field (e.g., "KC", "BUF") matches our existing `Team.abbreviation` exactly — no mapping table needed, just a simple `Map<abbreviation, teamId>` lookup
+- Separating schedule sync from score sync is critical: schedule sync creates/updates game structure using 1 API call for the full season, while score sync updates only closed/complete games per week — this prevents writing partial scores for in-progress games
+- Game dates must be set to noon UTC (`setUTCHours(12, 0, 0, 0)`) to match the existing noon-UTC storage pattern from Cycle 4 — prevents timezone shift issues when JavaScript converts dates
+- Primetime detection uses UTC hours (>= 23 UTC ≈ 7+ PM ET) — games scheduled at midnight UTC (00:xx) are the next calendar day in UTC but the same evening in ET, so the dayOfWeek must be passed separately from the detection logic
+- The `ApiUsage` model with 30-day rolling window counting provides accurate quota tracking without external services — the 80% warning threshold gives administrators time to plan before exhausting the trial key
+- Prisma `upsert` on the existing `@@unique([date, homeTeamId, awayTeamId])` constraint makes the sync operations idempotent — running the same sync twice produces the same result without duplicating data

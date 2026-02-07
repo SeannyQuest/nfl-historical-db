@@ -150,6 +150,18 @@ export function usePlayoffStats() {
   });
 }
 
+export function useApiUsage() {
+  return useQuery({
+    queryKey: ["apiUsage"],
+    queryFn: async () => {
+      const res = await fetch("/api/api-usage");
+      if (!res.ok) throw new Error("Failed to fetch API usage");
+      return res.json();
+    },
+    staleTime: 30 * 1000, // refresh more often for admin
+  });
+}
+
 export function useMatchup(team1: string, team2: string) {
   return useQuery({
     queryKey: ["matchup", team1, team2],

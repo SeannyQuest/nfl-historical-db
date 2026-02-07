@@ -137,6 +137,17 @@ model BettingLine {
   @@index([gameId])
 }
 
+// ─── ApiUsage ──────────────────────────────────────────
+
+model ApiUsage {
+  id       String   @id @default(cuid())
+  sport    String   // "nfl", "ncaafb", "ncaamb"
+  endpoint String   // e.g. "season_schedule", "weekly_schedule"
+  calledAt DateTime @default(now())
+
+  @@index([sport, calledAt])
+}
+
 // ─── Weather ─────────────────────────────────────────────
 
 model Weather {
