@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   const checks: Record<string, unknown> = {
@@ -11,29 +12,18 @@ export async function GET() {
     },
   };
 
-  // Test Prisma import
+  // Test DB connection
   try {
-    const { PrismaClient } = await import("@/generated/prisma/client");
-    checks.prismaImport = "ok";
+    const teamCount = await prisma.team.count();
+    const seasonCount = await prisma.season.count();
+    const gameCount = await prisma.game.count();
+    const userCount = await prisma.user.count();
 
-    // Test DB connection
-    try {
-      const prisma = new PrismaClient();
-      const teamCount = await prisma.team.count();
-      const seasonCount = await prisma.season.count();
-      const gameCount = await prisma.game.count();
-      const userCount = await prisma.user.count();
-      await prisma.$disconnect();
-
-      checks.database = "connected";
-      checks.counts = { teams: teamCount, seasons: seasonCount, games: gameCount, users: userCount };
-    } catch (dbErr) {
-      checks.database = "FAILED";
-      checks.dbError = dbErr instanceof Error ? dbErr.message : String(dbErr);
-    }
-  } catch (importErr) {
-    checks.prismaImport = "FAILED";
-    checks.importError = importErr instanceof Error ? importErr.message : String(importErr);
+    checks.database = "connected";
+    checks.counts = { teams: teamCount, seasons: seasonCount, games: gameCount, users: userCount };
+  } catch (dbErr) {
+    checks.database = "FAILED";
+    checks.dbError = dbErr instanceof Error ? dbErr.message : String(dbErr);
   }
 
   return NextResponse.json(checks, { status: 200 });

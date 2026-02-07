@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createCheckoutSession } from "@/lib/stripe";
-import { PrismaClient, SubscriptionTier } from "@/generated/prisma/client";
+import { prisma } from "@/lib/prisma";
+import { SubscriptionTier } from "@/generated/prisma/client";
 import { z } from "zod";
-
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-const prisma = globalForPrisma.prisma ?? new PrismaClient();
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
 const CheckoutSchema = z.object({
   tier: z.nativeEnum(SubscriptionTier),

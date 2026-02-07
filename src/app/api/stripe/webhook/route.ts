@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripeSigningSecret, getTierFromPrice } from "@/lib/stripe";
-import { PrismaClient, SubscriptionTier } from "@/generated/prisma/client";
-
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-const prisma = globalForPrisma.prisma ?? new PrismaClient();
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+import { prisma } from "@/lib/prisma";
+import { SubscriptionTier } from "@/generated/prisma/client";
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
