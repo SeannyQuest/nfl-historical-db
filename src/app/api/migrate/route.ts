@@ -28,7 +28,7 @@ interface MigrateResponse {
   weatherRecords: number;
   errorDetails?: Array<{
     gameIndex: number;
-    hometeam: string;
+    homeTeam: string;
     awayTeam: string;
     error: string;
   }>;
