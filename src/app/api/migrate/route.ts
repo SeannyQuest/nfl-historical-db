@@ -61,6 +61,16 @@ function detectIsPlayoff(week: string): boolean {
   return playoffWeeks.includes(week);
 }
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -69,7 +79,7 @@ export async function POST(request: NextRequest) {
     if (!Array.isArray(games)) {
       return NextResponse.json(
         { error: "games must be an array" },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -231,13 +241,13 @@ export async function POST(request: NextRequest) {
       response.errorDetails = errorList;
     }
 
-    return NextResponse.json(response);
+    return NextResponse.json(response, { headers: corsHeaders });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
       { error: errorMessage },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
