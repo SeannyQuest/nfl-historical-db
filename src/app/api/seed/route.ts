@@ -27,7 +27,7 @@ const ALL_TEAMS: TeamSeed[] = [
   // AFC South
   { name: "Houston Texans", abbreviation: "HOU", city: "Houston", nickname: "Texans", conference: "AFC", division: "SOUTH", franchiseKey: "Texans", isActive: true },
   { name: "Indianapolis Colts", abbreviation: "IND", city: "Indianapolis", nickname: "Colts", conference: "AFC", division: "SOUTH", franchiseKey: "Colts", isActive: true },
-  { name: "Jacksonville Jaguars", abbreviation: "JAX", city: "Jacksonville", nickname: "Jaguars", conference: "AFC", division: "SOUTH", franchiseKey: "Jaguars", isActive: true },
+  { name: "Jacksonville Jaguars", abbreviation: "JAC", city: "Jacksonville", nickname: "Jaguars", conference: "AFC", division: "SOUTH", franchiseKey: "Jaguars", isActive: true },
   { name: "Tennessee Titans", abbreviation: "TEN", city: "Nashville", nickname: "Titans", conference: "AFC", division: "SOUTH", franchiseKey: "Titans", isActive: true },
   // AFC West
   { name: "Denver Broncos", abbreviation: "DEN", city: "Denver", nickname: "Broncos", conference: "AFC", division: "WEST", franchiseKey: "Broncos", isActive: true },
@@ -51,7 +51,7 @@ const ALL_TEAMS: TeamSeed[] = [
   { name: "Tampa Bay Buccaneers", abbreviation: "TB", city: "Tampa", nickname: "Buccaneers", conference: "NFC", division: "SOUTH", franchiseKey: "Buccaneers", isActive: true },
   // NFC West
   { name: "Arizona Cardinals", abbreviation: "ARI", city: "Glendale", nickname: "Cardinals", conference: "NFC", division: "WEST", franchiseKey: "Cardinals", isActive: true },
-  { name: "Los Angeles Rams", abbreviation: "LAR", city: "Inglewood", nickname: "Rams", conference: "NFC", division: "WEST", franchiseKey: "Rams", isActive: true },
+  { name: "Los Angeles Rams", abbreviation: "LA", city: "Inglewood", nickname: "Rams", conference: "NFC", division: "WEST", franchiseKey: "Rams", isActive: true },
   { name: "San Francisco 49ers", abbreviation: "SF", city: "Santa Clara", nickname: "49ers", conference: "NFC", division: "WEST", franchiseKey: "49ers", isActive: true },
   { name: "Seattle Seahawks", abbreviation: "SEA", city: "Seattle", nickname: "Seahawks", conference: "NFC", division: "WEST", franchiseKey: "Seahawks", isActive: true },
   // Historical teams
